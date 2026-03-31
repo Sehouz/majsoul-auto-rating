@@ -5,7 +5,6 @@ Manual test runner for majsoul_recent_paipu.py.
 Examples:
     python test_recent_paipu_fetcher.py --access-token TOKEN --uid 12345678
     python test_recent_paipu_fetcher.py --token-file captured_token.json --eid 87654321 --count 5
-    python test_recent_paipu_fetcher.py --token-file captured_token.json --username 某玩家 --count 5
 """
 
 from __future__ import annotations
@@ -64,12 +63,9 @@ async def run_test(args: argparse.Namespace) -> int:
             client,
             uid=args.uid,
             eid=args.eid,
-            username=args.username,
             count=args.count,
             category=args.category,
             game_type=args.game_type,
-            exact_match=not args.fuzzy,
-            max_pages=args.max_pages,
         )
     finally:
         await client.close()
@@ -93,7 +89,6 @@ def build_parser() -> argparse.ArgumentParser:
     target = parser.add_mutually_exclusive_group(required=True)
     target.add_argument("--uid", type=int, help="Lookup by account id")
     target.add_argument("--eid", type=int, help="Lookup by friend id / eid")
-    target.add_argument("--username", type=str, help="Lookup by nickname")
     auth = parser.add_mutually_exclusive_group(required=False)
     auth.add_argument("--access-token", help="OAuth access token used for Majsoul login")
     auth.add_argument(
@@ -105,9 +100,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--count", type=int, default=DEFAULT_COUNT, help="Requested recent UUID count")
     parser.add_argument("--category", type=int, default=DEFAULT_CATEGORY, help="fetchAccountInfoExtra category")
     parser.add_argument("--type", dest="game_type", type=int, default=DEFAULT_TYPE, help="fetchAccountInfoExtra type")
-    parser.add_argument("--max-pages", type=int, default=5, help="Username search pagination limit")
     parser.add_argument("--request-timeout", type=float, default=30.0, help="Request timeout in seconds")
-    parser.add_argument("--fuzzy", action="store_true", help="Allow non-exact username match if only one result remains")
     return parser
 
 

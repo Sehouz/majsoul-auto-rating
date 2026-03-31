@@ -24,7 +24,7 @@ class RecentPaipuError(RuntimeError):
 
 
 class AccountResolutionError(RecentPaipuError):
-    """Raised when a uid or username cannot be resolved cleanly."""
+    """Raised when a uid or eid cannot be resolved cleanly."""
 
 
 @dataclass(frozen=True)
@@ -126,64 +126,6 @@ class RecentPaipuService:
             raise AccountResolutionError(f"eid not found: {eid}")
         return await self.resolve_account_by_id(account_id)
 
-    async def search_accounts_by_username(self, username: str, *, max_pages: int = 5) -> list[AccountCandidate]:
-        username = username.strip()
-        account_ids: list[int] = []
-        seen_ids: set[int] = set()
-        search_next = False
-
-        for _ in range(max_pages):
-            req = _pb().ReqSearchAccountByPattern()
-            req.search_next = search_next
-            req.pattern = username
-            res = await self.client.call(".lq.Lobby.searchAccountByPattern", req)
-
-            for account_id in getattr(res, "match_accounts", []):
-                account_id = int(account_id)
-                if account_id not in seen_ids:
-                    seen_ids.add(account_id)
-                    account_ids.append(account_id)
-
-            decoded_id = int(getattr(res, "decode_id", 0) or 0)
-            if decoded_id and decoded_id not in seen_ids:
-                seen_ids.add(decoded_id)
-                account_ids.append(decoded_id)
-
-            if getattr(res, "is_finished", True):
-                break
-            search_next = True
-
-        if not account_ids:
-            return []
-
-        return await self._fetch_multi_account_brief(account_ids)
-
-    async def resolve_account_by_username(
-        self,
-        username: str,
-        *,
-        exact_match: bool = True,
-        max_pages: int = 5,
-    ) -> AccountCandidate:
-        username = username.strip()
-        candidates = await self.search_accounts_by_username(username, max_pages=max_pages)
-        if not candidates:
-            raise AccountResolutionError(f"username not found: {username}")
-
-        if exact_match:
-            exact = [candidate for candidate in candidates if candidate.nickname == username]
-            if len(exact) == 1:
-                return exact[0]
-            if len(exact) > 1:
-                ids = ", ".join(str(candidate.account_id) for candidate in exact[:10])
-                raise AccountResolutionError(f"username matched multiple exact accounts: {username} -> {ids}")
-
-        if len(candidates) == 1:
-            return candidates[0]
-
-        sample = ", ".join(f"{candidate.nickname}({candidate.account_id})" for candidate in candidates[:10])
-        raise AccountResolutionError(f"username is ambiguous: {username} -> {sample}")
-
     async def fetch_recent_games(
         self,
         *,
@@ -247,45 +189,17 @@ class RecentPaipuService:
         )
         return account, uuids
 
-    async def fetch_recent_game_uuids_by_username(
-        self,
-        username: str,
-        *,
-        count: int = DEFAULT_COUNT,
-        category: int = DEFAULT_CATEGORY,
-        game_type: int = DEFAULT_TYPE,
-        exact_match: bool = True,
-        max_pages: int = 5,
-    ) -> tuple[AccountCandidate, list[str]]:
-        account = await self.resolve_account_by_username(
-            username,
-            exact_match=exact_match,
-            max_pages=max_pages,
-        )
-        uuids = await self.fetch_recent_game_uuids_by_uid(
-            account.account_id,
-            count=count,
-            category=category,
-            game_type=game_type,
-            validate_uid=False,
-        )
-        return account, uuids
-
-
 async def fetch_recent_game_uuids(
     client,
     *,
     uid: Optional[int] = None,
     eid: Optional[int] = None,
-    username: Optional[str] = None,
     count: int = DEFAULT_COUNT,
     category: int = DEFAULT_CATEGORY,
     game_type: int = DEFAULT_TYPE,
-    exact_match: bool = True,
-    max_pages: int = 5,
 ) -> dict:
-    if uid is None and eid is None and not username:
-        raise RecentPaipuError("either uid, eid, or username is required")
+    if uid is None and eid is None:
+        raise RecentPaipuError("either uid or eid is required")
 
     service = RecentPaipuService(client)
     if uid is not None:
@@ -317,21 +231,6 @@ async def fetch_recent_game_uuids(
             "category": category,
             "type": game_type,
         }
-
-    account, uuids = await service.fetch_recent_game_uuids_by_username(
-        username or "",
-        count=count,
-        category=category,
-        game_type=game_type,
-        exact_match=exact_match,
-        max_pages=max_pages,
-    )
-    return {
-        "account": account,
-        "uuids": uuids,
-        "category": category,
-        "type": game_type,
-    }
 
 
 __all__ = [

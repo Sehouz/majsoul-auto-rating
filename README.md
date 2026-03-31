@@ -2,7 +2,7 @@
 
 Self-contained Majsoul utilities for:
 - capturing a fresh `access_token`
-- querying recent paipu UUIDs by `uid` or `username`
+- querying recent paipu UUIDs by `uid` or `eid`
 
 ## Environment
 
@@ -33,7 +33,6 @@ Use the captured JSON file directly:
 ```bash
 python test_recent_paipu_fetcher.py --token-file captured_token.json --uid 12345678
 python test_recent_paipu_fetcher.py --token-file captured_token.json --eid 87654321
-python test_recent_paipu_fetcher.py --token-file captured_token.json --username 某玩家 --count 5
 ```
 
 Or pass a token explicitly:
