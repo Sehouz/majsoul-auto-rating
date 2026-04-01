@@ -71,3 +71,38 @@ The converter currently supports the standard 4-player replay path built from:
 - `RecordAnGangAddGang`
 - `RecordHule`
 - `RecordNoTile`
+
+## Embedded Mortal Runtime
+
+The project now has an in-process Mortal wrapper:
+
+- [mortal_runtime.py](/Users/sehouz/ZLTV/majsoul-auto-rating/mortal_runtime.py)
+- [mortal_review.py](/Users/sehouz/ZLTV/majsoul-auto-rating/mortal_review.py)
+
+These modules do not spawn the Mortal CLI. They load the model directly,
+create `libriichi.mjai.Bot` sessions in-process, and can compute a lightweight
+review result.
+
+At the moment, this requires a Python environment that already has Mortal's
+runtime dependencies such as `torch`. The local project `.venv` is enough for
+Majsoul protocol work, but not for model execution.
+
+Smoke test the embedded runtime with an existing MJAI log:
+
+```bash
+PYTHONPATH=/Users/sehouz/ZLTV/majsoul-auto-rating \
+  /Users/sehouz/Mahjang/Mortal/.venv/bin/python \
+  test_mortal_runtime.py \
+  --mjai-log /tmp/game.mjai.jsonl \
+  --player-id 0
+```
+
+Run the lightweight in-process review:
+
+```bash
+PYTHONPATH=/Users/sehouz/ZLTV/majsoul-auto-rating \
+  /Users/sehouz/Mahjang/Mortal/.venv/bin/python \
+  test_mortal_review.py \
+  --mjai-log /tmp/game.mjai.jsonl \
+  --player-id 0
+```
