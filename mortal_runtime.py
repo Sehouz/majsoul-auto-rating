@@ -22,10 +22,12 @@ import sys
 from typing import Any
 
 
-DEFAULT_MORTAL_REPO = Path("/Users/sehouz/Mahjang/Mortal")
-DEFAULT_MORTAL_PYTHON_DIR = DEFAULT_MORTAL_REPO / "mortal"
-DEFAULT_MORTAL_MODEL = Path("/Users/sehouz/Mahjang/models/mortal_tenhou_best_20251223.pth")
-DEFAULT_GRP_MODEL = DEFAULT_MORTAL_PYTHON_DIR / "grp.pth"
+REPO_ROOT = Path(__file__).resolve().parent
+DEFAULT_MORTAL_VENDOR_DIR = REPO_ROOT / "vendor"
+DEFAULT_MORTAL_RUNTIME_DIR = DEFAULT_MORTAL_VENDOR_DIR / "mortal_runtime"
+DEFAULT_LIBRIICHI_SOURCE_DIR = DEFAULT_MORTAL_VENDOR_DIR / "libriichi-src"
+DEFAULT_MORTAL_MODEL = DEFAULT_MORTAL_VENDOR_DIR / "models" / "mortal.pth"
+DEFAULT_GRP_MODEL = DEFAULT_MORTAL_VENDOR_DIR / "models" / "grp.pth"
 
 
 class MortalRuntimeError(RuntimeError):
@@ -47,8 +49,9 @@ def _import_or_raise(name: str, help_text: str) -> Any:
 
 @dataclass(frozen=True)
 class MortalPaths:
-    mortal_repo: Path = DEFAULT_MORTAL_REPO
-    mortal_python_dir: Path = DEFAULT_MORTAL_PYTHON_DIR
+    mortal_vendor_dir: Path = DEFAULT_MORTAL_VENDOR_DIR
+    mortal_runtime_dir: Path = DEFAULT_MORTAL_RUNTIME_DIR
+    libriichi_source_dir: Path = DEFAULT_LIBRIICHI_SOURCE_DIR
     model_state_path: Path = DEFAULT_MORTAL_MODEL
     grp_state_path: Path | None = DEFAULT_GRP_MODEL
 
@@ -127,16 +130,22 @@ class MortalRuntime:
         self.enable_quick_eval = bool(enable_quick_eval)
         self.enable_rule_based_agari_guard = bool(enable_rule_based_agari_guard)
 
-        if not self.paths.mortal_python_dir.exists():
+        if not self.paths.mortal_runtime_dir.exists():
             raise MortalRuntimeError(
-                f"Mortal python dir does not exist: {self.paths.mortal_python_dir}"
+                f"Vendored Mortal runtime dir does not exist: {self.paths.mortal_runtime_dir}"
+            )
+        libriichi_ext = self.paths.mortal_runtime_dir / "libriichi.so"
+        if not libriichi_ext.exists():
+            raise MortalRuntimeError(
+                "Vendored libriichi extension is missing. Build it from "
+                f"{self.paths.libriichi_source_dir} and copy the result to {libriichi_ext}."
             )
         if not self.paths.model_state_path.exists():
             raise MortalRuntimeError(
                 f"Mortal model state does not exist: {self.paths.model_state_path}"
             )
 
-        _ensure_sys_path(self.paths.mortal_python_dir)
+        _ensure_sys_path(self.paths.mortal_runtime_dir)
 
         self._torch = _import_or_raise(
             "torch",
@@ -144,19 +153,19 @@ class MortalRuntime:
         )
         self._model_module = _import_or_raise(
             "model",
-            f"Failed to import Mortal runtime module `model` from {self.paths.mortal_python_dir}",
+            f"Failed to import vendored Mortal runtime module `model` from {self.paths.mortal_runtime_dir}",
         )
         self._engine_module = _import_or_raise(
             "engine",
-            f"Failed to import Mortal runtime module `engine` from {self.paths.mortal_python_dir}",
+            f"Failed to import vendored Mortal runtime module `engine` from {self.paths.mortal_runtime_dir}",
         )
         libriichi_mjai = _import_or_raise(
             "libriichi.mjai",
-            f"Failed to import `libriichi.mjai` from {self.paths.mortal_python_dir}",
+            f"Failed to import vendored `libriichi.mjai` from {self.paths.mortal_runtime_dir}",
         )
         self._dataset_module = _import_or_raise(
             "libriichi.dataset",
-            f"Failed to import `libriichi.dataset` from {self.paths.mortal_python_dir}",
+            f"Failed to import vendored `libriichi.dataset` from {self.paths.mortal_runtime_dir}",
         )
 
         self._bot_class = libriichi_mjai.Bot
@@ -273,17 +282,18 @@ def load_mortal_runtime(
     *,
     model_state_path: Path | str = DEFAULT_MORTAL_MODEL,
     grp_state_path: Path | str | None = DEFAULT_GRP_MODEL,
-    mortal_repo: Path | str = DEFAULT_MORTAL_REPO,
+    mortal_vendor_dir: Path | str = DEFAULT_MORTAL_VENDOR_DIR,
     device: str = "cpu",
     enable_amp: bool = False,
     enable_quick_eval: bool = False,
     enable_rule_based_agari_guard: bool = True,
     load_grp: bool = True,
 ) -> MortalRuntime:
-    repo_path = Path(mortal_repo)
+    vendor_dir = Path(mortal_vendor_dir)
     paths = MortalPaths(
-        mortal_repo=repo_path,
-        mortal_python_dir=repo_path / "mortal",
+        mortal_vendor_dir=vendor_dir,
+        mortal_runtime_dir=vendor_dir / "mortal_runtime",
+        libriichi_source_dir=vendor_dir / "libriichi-src",
         model_state_path=Path(model_state_path),
         grp_state_path=None if grp_state_path is None else Path(grp_state_path),
     )
@@ -300,7 +310,9 @@ def load_mortal_runtime(
 __all__ = [
     "DEFAULT_GRP_MODEL",
     "DEFAULT_MORTAL_MODEL",
-    "DEFAULT_MORTAL_REPO",
+    "DEFAULT_MORTAL_RUNTIME_DIR",
+    "DEFAULT_MORTAL_VENDOR_DIR",
+    "DEFAULT_LIBRIICHI_SOURCE_DIR",
     "MortalBotSession",
     "MortalLogSummary",
     "MortalPaths",

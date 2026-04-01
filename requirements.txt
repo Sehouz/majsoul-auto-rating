@@ -1,4 +1,7 @@
 aiohttp>=3.13,<4
-protobuf>=6.30,<7
+numpy>=2,<3
+protobuf>=6.33.3,<7
+toml>=0.10,<1
+torch>=2.9,<3
 websockets>=15,<16
 playwright>=1.50,<2

@@ -11,7 +11,7 @@ from mortal_review import review_mjai_events
 from mortal_runtime import (
     DEFAULT_GRP_MODEL,
     DEFAULT_MORTAL_MODEL,
-    DEFAULT_MORTAL_REPO,
+    DEFAULT_MORTAL_VENDOR_DIR,
     load_mortal_runtime,
 )
 
@@ -24,7 +24,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default="cpu", help="Torch device")
     parser.add_argument("--show-entries", type=int, default=5, help="Print first N review entries")
     parser.add_argument("--with-phi", action="store_true", help="Compute phi matrix")
-    parser.add_argument("--mortal-repo", default=str(DEFAULT_MORTAL_REPO))
+    parser.add_argument("--mortal-vendor-dir", default=str(DEFAULT_MORTAL_VENDOR_DIR))
     parser.add_argument("--model", default=str(DEFAULT_MORTAL_MODEL))
     parser.add_argument("--grp-model", default=str(DEFAULT_GRP_MODEL))
     return parser
@@ -54,7 +54,7 @@ def main() -> int:
     args = build_parser().parse_args()
     events = load_events(args)
     runtime = load_mortal_runtime(
-        mortal_repo=args.mortal_repo,
+        mortal_vendor_dir=args.mortal_vendor_dir,
         model_state_path=args.model,
         grp_state_path=args.grp_model,
         device=args.device,

@@ -74,7 +74,7 @@ The converter currently supports the standard 4-player replay path built from:
 
 ## Embedded Mortal Runtime
 
-The project now has an in-process Mortal wrapper:
+The project now vendors the Mortal runtime assets locally under [vendor/README.md](/Users/sehouz/ZLTV/majsoul-auto-rating/vendor/README.md) and has an in-process wrapper:
 
 - [mortal_runtime.py](/Users/sehouz/ZLTV/majsoul-auto-rating/mortal_runtime.py)
 - [mortal_review.py](/Users/sehouz/ZLTV/majsoul-auto-rating/mortal_review.py)
@@ -83,9 +83,28 @@ These modules do not spawn the Mortal CLI. They load the model directly,
 create `libriichi.mjai.Bot` sessions in-process, and can compute a lightweight
 review result.
 
-At the moment, this requires a Python environment that already has Mortal's
-runtime dependencies such as `torch`. The local project `.venv` is enough for
-Majsoul protocol work, but not for model execution.
+Vendored assets now include:
+
+- Mortal Python runtime files
+- `libriichi.so`
+- `libriichi` Rust source
+- `mortal.pth`
+- GRP model
+
+At the moment, Python package dependencies still need to exist in the active
+environment, especially `torch`, `numpy`, `toml`, and a recent `protobuf`.
+The project no longer needs to import code from `/Users/sehouz/Mahjang/Mortal`
+at runtime.
+
+The vendored Rust source has been validated with:
+
+```bash
+cd /Users/sehouz/ZLTV/majsoul-auto-rating/vendor/libriichi-src
+env PYO3_PYTHON=/Users/sehouz/Mahjang/Mortal/.venv/bin/python cargo build --release --lib
+```
+
+`target/`, compiled extension binaries, and local model files are ignored by
+git.
 
 Smoke test the embedded runtime with an existing MJAI log:
 

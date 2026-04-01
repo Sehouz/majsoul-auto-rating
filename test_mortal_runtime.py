@@ -10,7 +10,7 @@ from pathlib import Path
 from mortal_runtime import (
     DEFAULT_GRP_MODEL,
     DEFAULT_MORTAL_MODEL,
-    DEFAULT_MORTAL_REPO,
+    DEFAULT_MORTAL_VENDOR_DIR,
     load_mortal_runtime,
 )
 
@@ -29,7 +29,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--device", default="cpu", help="Torch device")
     parser.add_argument("--show-events", type=int, default=5, help="Show first N reactions")
     parser.add_argument("--show-phi", action="store_true", help="Print phi matrix summary")
-    parser.add_argument("--mortal-repo", default=str(DEFAULT_MORTAL_REPO), help="Path to Mortal repo")
+    parser.add_argument(
+        "--mortal-vendor-dir",
+        default=str(DEFAULT_MORTAL_VENDOR_DIR),
+        help="Path to vendored Mortal runtime assets",
+    )
     parser.add_argument("--model", default=str(DEFAULT_MORTAL_MODEL), help="Path to Mortal model state")
     parser.add_argument("--grp-model", default=str(DEFAULT_GRP_MODEL), help="Path to GRP model state")
     parser.add_argument(
@@ -65,7 +69,7 @@ def main() -> int:
     events = load_events(args)
 
     runtime = load_mortal_runtime(
-        mortal_repo=args.mortal_repo,
+        mortal_vendor_dir=args.mortal_vendor_dir,
         model_state_path=args.model,
         grp_state_path=args.grp_model,
         device=args.device,
