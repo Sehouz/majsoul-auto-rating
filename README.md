@@ -4,6 +4,7 @@ Self-contained Majsoul utilities for:
 - capturing a fresh `access_token`
 - querying recent paipu UUIDs by `uid` or `eid`
 - converting Mahjong Soul replay records into MJAI events
+- reviewing a user's recent ranked paipu with embedded Mortal
 
 The Mortal rating/review core is being rebuilt as an in-process module.
 The old subprocess-heavy `mjai-reviewer` wrapper is intentionally not part of
@@ -125,3 +126,30 @@ PYTHONPATH=/Users/sehouz/ZLTV/majsoul-auto-rating \
   --mjai-log /tmp/game.mjai.jsonl \
   --player-id 0
 ```
+
+## Recent User Rating
+
+Review a user's recent ranked paipu end-to-end:
+
+```bash
+PYTHONPATH=/Users/sehouz/ZLTV/majsoul-auto-rating \
+  /Users/sehouz/Mahjang/Mortal/.venv/bin/python \
+  test_recent_rating.py \
+  --token-file captured_token.json \
+  --uid 12345678 \
+  --count 20
+```
+
+This entry now only reviews 4-player ranked games.
+
+You can also use `--eid` instead of `--uid`.
+
+The output includes:
+
+- per-game `rating` and `rating_percent`
+- `average_rating` / `average_rating_percent`
+- `aggregate_rating` / `aggregate_rating_percent`
+- per-game failures if some paipu cannot be converted or reviewed
+
+`rating` is kept as a `0..1` internal value, matching the upstream review core.
+For human-readable score display, use `rating_percent`, which is `rating * 100`.

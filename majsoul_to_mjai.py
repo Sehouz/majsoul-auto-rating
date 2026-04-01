@@ -106,18 +106,45 @@ def _get_seat(item: dict[str, Any], fallback: int = 0) -> int:
     return int(item.get("seat", fallback))
 
 
-def _account_names_from_head(head: dict[str, Any]) -> list[str]:
+def _accounts_with_inferred_seats(head: dict[str, Any]) -> list[tuple[int, dict[str, Any]]]:
     accounts = head.get("accounts", [])
     if len(accounts) != 4:
         raise MajsoulMjaiConversionError(
             f"only 4-player logs are supported for now, got {len(accounts)} players"
         )
 
-    names = ["", "", "", ""]
-    for index, account in enumerate(accounts):
-        seat = _get_seat(account, fallback=index)
+    explicit_seats: set[int] = set()
+    pending_accounts: list[dict[str, Any]] = []
+    resolved: list[tuple[int, dict[str, Any]]] = []
+
+    for account in accounts:
+        if not isinstance(account, dict):
+            continue
+        if "seat" not in account:
+            pending_accounts.append(account)
+            continue
+        seat = int(account["seat"])
         if not 0 <= seat < 4:
             raise MajsoulMjaiConversionError(f"invalid seat in head.accounts: {seat}")
+        explicit_seats.add(seat)
+        resolved.append((seat, account))
+
+    missing_seats = [seat for seat in range(4) if seat not in explicit_seats]
+    if len(missing_seats) != len(pending_accounts):
+        raise MajsoulMjaiConversionError(
+            f"failed to infer seats from head.accounts: explicit={sorted(explicit_seats)}, "
+            f"missing={missing_seats}, pending={len(pending_accounts)}"
+        )
+
+    for seat, account in zip(missing_seats, pending_accounts):
+        resolved.append((seat, account))
+
+    return resolved
+
+
+def _account_names_from_head(head: dict[str, Any]) -> list[str]:
+    names = ["", "", "", ""]
+    for seat, account in _accounts_with_inferred_seats(head):
         names[seat] = str(account.get("nickname", ""))
 
     if any(name == "" for name in names):

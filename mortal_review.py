@@ -45,7 +45,9 @@ class MortalReviewEntry:
 class MortalReviewResult:
     total_reviewed: int
     total_matches: int
+    raw_score_sum: float
     rating: float
+    rating_percent: float
     model_tag: str
     temperature: float
     phi_matrix: list[list[list[float]]] | None
@@ -320,7 +322,9 @@ def review_mjai_events(
     return MortalReviewResult(
         total_reviewed=total_reviewed,
         total_matches=total_matches,
+        raw_score_sum=raw_rating,
         rating=rating,
+        rating_percent=rating * 100.0,
         model_tag=runtime.model_tag,
         temperature=float(temperature),
         phi_matrix=phi_matrix,
