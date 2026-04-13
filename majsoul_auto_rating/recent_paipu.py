@@ -65,6 +65,13 @@ def _level_tuple(level_obj) -> tuple[int, int]:
     return int(getattr(level_obj, "id", 0)), int(getattr(level_obj, "score", 0))
 
 
+def _signed_int32(value: int) -> int:
+    value = int(value)
+    if value >= 2**31:
+        return value - 2**32
+    return value
+
+
 def _pb():
     from majsoul.proto import liqi_pb2 as protobuf_module
 
@@ -149,7 +156,7 @@ class RecentPaipuService:
                     start_time=int(getattr(game, "start_time", 0)),
                     end_time=int(getattr(game, "end_time", 0)),
                     rank=int(getattr(game, "rank", 0)),
-                    final_point=int(getattr(game, "final_point", 0)),
+                    final_point=_signed_int32(getattr(game, "final_point", 0)),
                     tag=int(getattr(game, "tag", 0)),
                     sub_tag=int(getattr(game, "sub_tag", 0)),
                 )
