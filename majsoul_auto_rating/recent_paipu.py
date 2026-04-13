@@ -168,6 +168,7 @@ class RecentPaipuService:
         if validate_uid:
             await self.resolve_account_by_id(uid)
         games = await self.fetch_recent_games(account_id=uid, category=category, game_type=game_type)
+        games.reverse()
         return [game.uuid for game in games[: max(0, count)]]
 
     async def fetch_recent_game_uuids_by_eid(
