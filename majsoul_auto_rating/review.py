@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Lightweight in-process Mortal review over MJAI events."""
 
 from __future__ import annotations
@@ -7,7 +6,7 @@ from dataclasses import dataclass
 import math
 from typing import Any
 
-from mortal_runtime import MortalRuntime, load_mortal_runtime
+from .runtime import MortalRuntime, load_mortal_runtime
 
 
 MJAI_TILE_LABELS = [

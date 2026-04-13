@@ -6,6 +6,7 @@ A simple client for communicating with Majsoul servers using WebSocket and Proto
 """
 
 import asyncio
+import logging
 import struct
 import time
 import uuid
@@ -41,6 +42,7 @@ SERVERS = {
 }
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+logger = logging.getLogger(__name__)
 
 
 def _build_response_class_map() -> Dict[str, Any]:
@@ -183,19 +185,19 @@ class MajsoulClient:
                 try:
                     route_info = await self._fetch_json(route_url, bust_cache=True)
                     if route_info.get("data", {}).get("maintenance"):
-                        print(f"Server {server} is under maintenance")
+                        logger.info("Server %s is under maintenance", server)
                         continue
                 except Exception:
                     pass
                 
                 ws_url = f"wss://{server}/gateway"
-                print(f"Connecting to {ws_url}...")
+                logger.debug("Connecting to %s", ws_url)
                 
                 self.ws = await websockets.connect(
                     ws_url,
                     additional_headers={"User-Agent": USER_AGENT},
                 )
-                print(f"Connected to {server}!")
+                logger.info("Connected to %s", server)
                 
                 # Start message receiver
                 self._receiver_task = asyncio.create_task(self._message_receiver())
@@ -203,7 +205,7 @@ class MajsoulClient:
                 
             except Exception as e:
                 last_error = e
-                print(f"Failed to connect to {server}: {e}")
+                logger.warning("Failed to connect to %s: %s", server, e)
                 continue
         
         raise MajsoulConnectionError(f"Failed to connect to any server: {last_error}")
@@ -308,9 +310,9 @@ class MajsoulClient:
                     try:
                         asyncio.create_task(callback(wrapper.name, wrapper.data))
                     except Exception as e:
-                        print(f"Error in notify callback: {e}")
+                        logger.exception("Error in notify callback")
             except Exception as e:
-                print(f"Failed to decode notify: {e}")
+                logger.warning("Failed to decode notify: %s", e)
         
         return None
     
@@ -323,7 +325,7 @@ class MajsoulClient:
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            print(f"Message receiver error: {e}")
+            logger.warning("Message receiver error: %s", e)
             # Notify all pending requests of the error
             for msg_id, (future, _) in list(self.pending_requests.items()):
                 if not future.done():
@@ -464,7 +466,7 @@ class MajsoulClient:
             raise AuthenticationError(f"Login failed: {result}")
         
         self.account_id = result.account_id
-        print(f"Logged in as account: {result.account_id}")
+        logger.info("Logged in as account: %s", result.account_id)
         
         return result
     

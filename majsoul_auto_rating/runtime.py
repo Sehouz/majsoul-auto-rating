@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 In-process Mortal runtime wrapper for majsoul-auto-rating.
 
@@ -22,7 +21,7 @@ import sys
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parent
+REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MORTAL_VENDOR_DIR = REPO_ROOT / "vendor"
 DEFAULT_MORTAL_RUNTIME_DIR = DEFAULT_MORTAL_VENDOR_DIR / "mortal_runtime"
 DEFAULT_LIBRIICHI_SOURCE_DIR = DEFAULT_MORTAL_VENDOR_DIR / "libriichi-src"

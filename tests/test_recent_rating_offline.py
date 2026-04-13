@@ -1,15 +1,7 @@
-#!/usr/bin/env python3
-"""Offline integration test for recent-rating aggregation."""
-
 from __future__ import annotations
 
-import asyncio
-from dataclasses import asdict
-import json
-
-from majsoul_recent_paipu import AccountCandidate, RecentGame
-from majsoul_recent_rating import review_recent_games
-from mortal_review import MortalReviewResult
+from majsoul_auto_rating import AccountCandidate, RecentGame, review_recent_games
+from majsoul_auto_rating.review import MortalReviewResult
 
 
 def build_record(*, account_id: int, nickname: str, game_index: int) -> dict:
@@ -77,8 +69,7 @@ def fake_reviewer(
     del runtime, include_phi_matrix
     ryukyoku_event = next(event for event in events if event["type"] == "ryukyoku")
     bonus = ryukyoku_event.get("deltas", [0])[0]
-    if player_id != 0:
-        raise AssertionError(f"expected player_id=0, got {player_id}")
+    assert player_id == 0
 
     if bonus == 1:
         rating = 0.81
@@ -104,7 +95,7 @@ def fake_reviewer(
     )
 
 
-async def main() -> int:
+async def test_review_recent_games_offline_summary() -> None:
     account = AccountCandidate(
         account_id=12345,
         nickname="Target",
@@ -158,10 +149,3 @@ async def main() -> int:
     assert abs(summary.aggregate_rating - 0.5929) < 1e-9
     assert abs(summary.aggregate_rating_percent - 59.29) < 1e-9
     assert [game.player_id for game in summary.games] == [0, 0]
-
-    print(json.dumps(asdict(summary), ensure_ascii=False, indent=2))
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(asyncio.run(main()))

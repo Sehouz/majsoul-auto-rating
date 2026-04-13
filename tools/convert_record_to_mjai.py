@@ -1,42 +1,32 @@
 #!/usr/bin/env python3
-"""Offline test helper for Mahjong Soul -> MJAI conversion."""
+"""Convert a parsed Mahjong Soul record to MJAI events."""
 
 from __future__ import annotations
 
 import argparse
-import json
 from collections import Counter
+import json
 from pathlib import Path
 
-from majsoul_to_mjai import convert_parsed_record_to_mjai_events
+from majsoul_auto_rating import convert_parsed_record_to_mjai_events
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Convert a parsed Mahjong Soul record to MJAI")
     parser.add_argument("record_json", help="Path to parsed record JSON with {head, data}")
-    parser.add_argument(
-        "--dump-output",
-        help="Optional path to save MJAI events as JSON lines",
-    )
-    parser.add_argument(
-        "--show-first",
-        type=int,
-        default=12,
-        help="Print the first N MJAI events",
-    )
+    parser.add_argument("--dump-output", help="Optional path to save MJAI events as JSON lines")
+    parser.add_argument("--show-first", type=int, default=12, help="Print the first N MJAI events")
     return parser
 
 
 def main() -> int:
     args = build_parser().parse_args()
     record_path = Path(args.record_json)
-
     with record_path.open("r", encoding="utf-8") as handle:
         record = json.load(handle)
 
     events = convert_parsed_record_to_mjai_events(record)
     counts = Counter(event["type"] for event in events)
-
     summary = {
         "input": str(record_path),
         "event_count": len(events),

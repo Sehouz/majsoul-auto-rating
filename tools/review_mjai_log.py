@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""Smoke test for the lightweight in-process Mortal review."""
+"""Run lightweight in-process Mortal review over a MJAI log."""
 
 from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 
-from mortal_review import review_mjai_events
-from mortal_runtime import (
+from majsoul_auto_rating import (
     DEFAULT_GRP_MODEL,
     DEFAULT_MORTAL_MODEL,
     DEFAULT_MORTAL_VENDOR_DIR,
     load_mortal_runtime,
+    review_mjai_events,
 )
+
+from tools._io import load_events
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,29 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def load_events(args: argparse.Namespace) -> list[dict]:
-    if bool(args.parsed_record) == bool(args.mjai_log):
-        raise SystemExit("exactly one of --parsed-record or --mjai-log is required")
-
-    if args.parsed_record:
-        from majsoul_to_mjai import convert_parsed_record_to_mjai_events
-
-        with Path(args.parsed_record).open("r", encoding="utf-8") as handle:
-            record = json.load(handle)
-        return convert_parsed_record_to_mjai_events(record)
-
-    events: list[dict] = []
-    with Path(args.mjai_log).open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if line:
-                events.append(json.loads(line))
-    return events
-
-
 def main() -> int:
     args = build_parser().parse_args()
-    events = load_events(args)
+    events = load_events(parsed_record=args.parsed_record, mjai_log=args.mjai_log)
     runtime = load_mortal_runtime(
         mortal_vendor_dir=args.mortal_vendor_dir,
         model_state_path=args.model,
@@ -97,7 +78,6 @@ def main() -> int:
             "kyoku_count": len(result.phi_matrix),
             "first_kyoku": result.phi_matrix[0] if result.phi_matrix else None,
         }, ensure_ascii=False, indent=2))
-
     return 0
 
 

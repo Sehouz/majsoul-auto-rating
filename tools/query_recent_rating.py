@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live/manual runner for recent Majsoul account rating review."""
+"""Manual runner for recent Majsoul account rating review."""
 
 from __future__ import annotations
 
@@ -10,40 +10,18 @@ import json
 import sys
 from pathlib import Path
 
-from majsoul_recent_paipu import DEFAULT_TYPE, RecentPaipuError
-from majsoul_recent_rating import FOUR_PLAYER_CATEGORY, fetch_and_review_recent_games
-from mortal_runtime import (
+from majsoul import AuthenticationError
+from majsoul_auto_rating import (
+    AuthInputError,
+    FOUR_PLAYER_CATEGORY,
     DEFAULT_GRP_MODEL,
     DEFAULT_MORTAL_MODEL,
     DEFAULT_MORTAL_VENDOR_DIR,
+    authenticated_client,
+    fetch_and_review_recent_games,
     load_mortal_runtime,
 )
-
-
-DEFAULT_TOKEN_FILE = Path(__file__).resolve().with_name("captured_token.json")
-
-
-def resolve_auth_inputs(args: argparse.Namespace) -> tuple[str, str]:
-    if args.access_token:
-        return args.access_token, args.server or "cn"
-
-    token_file = args.token_file or DEFAULT_TOKEN_FILE
-    if not token_file.exists():
-        raise RecentPaipuError(
-            f"token file not found: {token_file}. Use --access-token or run capture_access_token.py first."
-        )
-
-    try:
-        payload = json.loads(token_file.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise RecentPaipuError(f"invalid token file json: {token_file}") from exc
-
-    access_token = str(payload.get("access_token") or "").strip()
-    if not access_token:
-        raise RecentPaipuError(f"token file missing access_token: {token_file}")
-
-    server = args.server or str(payload.get("server") or "cn")
-    return access_token, server
+from majsoul_auto_rating.recent_paipu import DEFAULT_TYPE
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -53,12 +31,8 @@ def build_parser() -> argparse.ArgumentParser:
     target.add_argument("--eid", type=int, help="Target friend id / eid")
     auth = parser.add_mutually_exclusive_group(required=False)
     auth.add_argument("--access-token", help="OAuth access token used for Majsoul login")
-    auth.add_argument(
-        "--token-file",
-        type=Path,
-        help="JSON file produced by capture_access_token.py; defaults to ./captured_token.json if present",
-    )
-    parser.add_argument("--server", default=None, help="Target server: cn/jp/en; defaults to token file server or cn")
+    auth.add_argument("--token-file", type=Path, help="JSON file produced by capture_access_token.py")
+    parser.add_argument("--server", default=None, help="Target server: cn/jp/en")
     parser.add_argument("--count", type=int, default=20, help="Requested recent ranked paipu count")
     parser.add_argument("--type", dest="game_type", type=int, default=DEFAULT_TYPE, help="fetchAccountInfoExtra type")
     parser.add_argument("--request-timeout", type=float, default=30.0, help="Request timeout in seconds")
@@ -71,10 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-async def run_test(args: argparse.Namespace) -> int:
-    from majsoul import MajsoulClient
-
-    access_token, server = resolve_auth_inputs(args)
+async def run_query(args: argparse.Namespace) -> int:
     runtime = load_mortal_runtime(
         mortal_vendor_dir=args.mortal_vendor_dir,
         model_state_path=args.model,
@@ -84,10 +55,12 @@ async def run_test(args: argparse.Namespace) -> int:
         load_grp=args.with_phi,
     )
 
-    client = MajsoulClient(server=server, request_timeout=args.request_timeout)
-    try:
-        await client.connect()
-        await client.login(access_token)
+    async with authenticated_client(
+        access_token=args.access_token,
+        token_file=args.token_file,
+        server=args.server,
+        request_timeout=args.request_timeout,
+    ) as client:
         summary = await fetch_and_review_recent_games(
             client,
             uid=args.uid,
@@ -99,8 +72,6 @@ async def run_test(args: argparse.Namespace) -> int:
             include_phi_matrix=args.with_phi,
             strict=args.strict,
         )
-    finally:
-        await client.close()
 
     print(json.dumps(asdict(summary), ensure_ascii=False, indent=2))
     return 0
@@ -109,15 +80,14 @@ async def run_test(args: argparse.Namespace) -> int:
 def main() -> int:
     args = build_parser().parse_args()
     try:
-        return asyncio.run(run_test(args))
-    except RecentPaipuError as exc:
-        print(f"Lookup error: {exc}", file=sys.stderr)
+        return asyncio.run(run_query(args))
+    except AuthInputError as exc:
+        print(f"Auth input error: {exc}", file=sys.stderr)
+        return 1
+    except AuthenticationError as exc:
+        print(f"Authentication error: {exc}", file=sys.stderr)
         return 1
     except Exception as exc:
-        error_type = type(exc).__name__
-        if error_type == "AuthenticationError":
-            print(f"Authentication error: {exc}", file=sys.stderr)
-            return 1
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 

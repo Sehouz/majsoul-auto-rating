@@ -1,6 +1,8 @@
 .venv
 __pycache__
 captured_token.json
+*.egg-info/
+.pytest_cache/
 artifacts/
 *.pyc
 
@@ -13,3 +15,6 @@ vendor/mortal_runtime/libriichi.pyd
 
 # Local model weights
 vendor/models/*.pth
+
+# Local test/runtime artifacts
+tests/.tmp/

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Fetch and review a Majsoul user's recent ranked paipu with embedded Mortal."""
 
 from __future__ import annotations
@@ -8,17 +7,16 @@ import math
 from typing import Any, Callable, Sequence
 
 from majsoul.proto import liqi_pb2 as pb
-from majsoul_recent_paipu import (
+from .mjai import convert_parsed_record_to_mjai_events, parse_res_game_record
+from .recent_paipu import (
     AccountCandidate,
-    DEFAULT_COUNT,
     DEFAULT_TYPE,
     RecentGame,
     RecentPaipuError,
     RecentPaipuService,
 )
-from majsoul_to_mjai import convert_parsed_record_to_mjai_events, parse_res_game_record
-from mortal_review import MortalReviewResult, review_mjai_events
-from mortal_runtime import MortalRuntime
+from .review import MortalReviewResult, review_mjai_events
+from .runtime import MortalRuntime
 
 
 class RecentRatingError(RuntimeError):
