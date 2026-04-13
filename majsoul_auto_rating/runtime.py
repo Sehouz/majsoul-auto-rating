@@ -15,14 +15,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import importlib
+from importlib.resources import files
 import json
 from pathlib import Path
+import platform
 import sys
+import sysconfig
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_MORTAL_VENDOR_DIR = REPO_ROOT / "vendor"
+PACKAGE_ROOT = Path(__file__).resolve().parent
+DEFAULT_MORTAL_VENDOR_DIR = Path(str(files("majsoul_auto_rating").joinpath("vendor")))
 DEFAULT_MORTAL_RUNTIME_DIR = DEFAULT_MORTAL_VENDOR_DIR / "mortal_runtime"
 DEFAULT_LIBRIICHI_SOURCE_DIR = DEFAULT_MORTAL_VENDOR_DIR / "libriichi-src"
 DEFAULT_MORTAL_MODEL = DEFAULT_MORTAL_VENDOR_DIR / "models" / "mortal.pth"
@@ -44,6 +47,17 @@ def _import_or_raise(name: str, help_text: str) -> Any:
         return importlib.import_module(name)
     except ModuleNotFoundError as exc:
         raise MortalRuntimeError(help_text) from exc
+
+
+def _libriichi_extension_candidates(runtime_dir: Path) -> list[Path]:
+    suffix = sysconfig.get_config_var("EXT_SUFFIX")
+    names: list[str] = []
+    if suffix:
+        names.append(f"libriichi{suffix}")
+    names.append("libriichi.so")
+    if platform.system() == "Darwin":
+        names.append("libriichi.dylib")
+    return [runtime_dir / name for name in dict.fromkeys(names)]
 
 
 @dataclass(frozen=True)
@@ -133,11 +147,14 @@ class MortalRuntime:
             raise MortalRuntimeError(
                 f"Vendored Mortal runtime dir does not exist: {self.paths.mortal_runtime_dir}"
             )
-        libriichi_ext = self.paths.mortal_runtime_dir / "libriichi.so"
-        if not libriichi_ext.exists():
+        libriichi_ext = next(
+            (candidate for candidate in _libriichi_extension_candidates(self.paths.mortal_runtime_dir) if candidate.exists()),
+            None,
+        )
+        if libriichi_ext is None:
             raise MortalRuntimeError(
                 "Vendored libriichi extension is missing. Build it from "
-                f"{self.paths.libriichi_source_dir} and copy the result to {libriichi_ext}."
+                f"{self.paths.libriichi_source_dir} and copy the result into {self.paths.mortal_runtime_dir}."
             )
         if not self.paths.model_state_path.exists():
             raise MortalRuntimeError(
@@ -289,12 +306,20 @@ def load_mortal_runtime(
     load_grp: bool = True,
 ) -> MortalRuntime:
     vendor_dir = Path(mortal_vendor_dir)
+    resolved_model_state_path = Path(model_state_path)
+    resolved_grp_state_path = None if grp_state_path is None else Path(grp_state_path)
+
+    if resolved_model_state_path == DEFAULT_MORTAL_MODEL:
+        resolved_model_state_path = vendor_dir / "models" / "mortal.pth"
+    if resolved_grp_state_path == DEFAULT_GRP_MODEL:
+        resolved_grp_state_path = vendor_dir / "models" / "grp.pth"
+
     paths = MortalPaths(
         mortal_vendor_dir=vendor_dir,
         mortal_runtime_dir=vendor_dir / "mortal_runtime",
         libriichi_source_dir=vendor_dir / "libriichi-src",
-        model_state_path=Path(model_state_path),
-        grp_state_path=None if grp_state_path is None else Path(grp_state_path),
+        model_state_path=resolved_model_state_path,
+        grp_state_path=resolved_grp_state_path,
     )
     return MortalRuntime(
         paths=paths,

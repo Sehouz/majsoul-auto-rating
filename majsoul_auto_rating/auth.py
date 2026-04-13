@@ -10,7 +10,7 @@ from typing import Any, AsyncIterator
 from majsoul import MajsoulClient
 
 
-DEFAULT_TOKEN_FILE = Path(__file__).resolve().parent.parent / "captured_token.json"
+DEFAULT_TOKEN_FILE = Path.cwd() / "captured_token.json"
 
 
 class AuthInputError(RuntimeError):
@@ -21,7 +21,7 @@ def load_token_payload(token_file: Path | str = DEFAULT_TOKEN_FILE) -> dict[str,
     path = Path(token_file)
     if not path.exists():
         raise AuthInputError(
-            f"token file not found: {path}. Provide --access-token or run tools/capture_access_token.py first."
+            f"token file not found: {path}. Provide --access-token or point --token-file to a valid capture JSON."
         )
 
     try:

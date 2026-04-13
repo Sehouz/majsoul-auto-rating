@@ -5,6 +5,8 @@ captured_token.json
 .pytest_cache/
 artifacts/
 *.pyc
+build/
+dist/
 
 # Rust / vendored build outputs
 target/
@@ -12,6 +14,9 @@ vendor/libriichi-src/target/
 vendor/mortal_runtime/libriichi.so
 vendor/mortal_runtime/libriichi.dylib
 vendor/mortal_runtime/libriichi.pyd
+vendor/mortal_runtime/libriichi*.so
+vendor/mortal_runtime/libriichi*.dylib
+vendor/mortal_runtime/libriichi*.pyd
 
 # Local model weights
 vendor/models/*.pth

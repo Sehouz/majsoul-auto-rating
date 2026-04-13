@@ -503,7 +503,6 @@ dependencies = [
     { name = "aiohttp" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
-    { name = "playwright" },
     { name = "protobuf" },
     { name = "toml" },
     { name = "torch" },
@@ -515,12 +514,15 @@ test = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
 ]
+tools = [
+    { name = "playwright" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.13,<4" },
     { name = "numpy", specifier = ">=2,<3" },
-    { name = "playwright", specifier = ">=1.50,<2" },
+    { name = "playwright", marker = "extra == 'tools'", specifier = ">=1.50,<2" },
     { name = "protobuf", specifier = ">=6.33.3,<7" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3,<9" },
     { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.24,<1" },
@@ -528,7 +530,7 @@ requires-dist = [
     { name = "torch", specifier = ">=2.9,<3" },
     { name = "websockets", specifier = ">=15,<16" },
 ]
-provides-extras = ["test"]
+provides-extras = ["test", "tools"]
 
 [[package]]
 name = "markupsafe"
