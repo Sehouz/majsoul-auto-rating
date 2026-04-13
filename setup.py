@@ -29,13 +29,14 @@ def _build_libriichi(target_runtime_dir: Path) -> None:
     env = os.environ.copy()
     env.setdefault("PYO3_PYTHON", sys.executable)
     subprocess.run(
-        ["cargo", "build", "--release", "--lib"],
+        ["cargo", "build", "--locked", "--release", "--lib"],
         cwd=SOURCE_LIBRIICHI_DIR,
         check=True,
         env=env,
     )
 
-    release_dir = SOURCE_LIBRIICHI_DIR / "target" / "release"
+    target_dir = Path(env.get("CARGO_TARGET_DIR", SOURCE_LIBRIICHI_DIR / "target"))
+    release_dir = target_dir / "release"
     candidates = sorted(
         path
         for pattern in ("libriichi*.so", "libriichi*.dylib", "libriichi*.pyd")
