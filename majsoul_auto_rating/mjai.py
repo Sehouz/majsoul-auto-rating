@@ -504,6 +504,42 @@ def _convert_record_no_tile(
     ctx.last_discard_actor = None
 
 
+def _convert_record_liuju(
+    result: dict[str, Any],
+    ctx: ConversionContext,
+    events: list[dict[str, Any]],
+) -> None:
+    _append_pending_reach_accept(ctx, events)
+
+    deltas = None
+    gameend = result.get("gameend")
+    if isinstance(gameend, dict):
+        scores = gameend.get("scores")
+        if scores:
+            current_scores = _to_int_list(list(scores), expected=4)
+            deltas = [score - base for score, base in zip(current_scores, [0, 0, 0, 0], strict=False)]
+            start_kyoku = next(
+                (event for event in reversed(events) if event.get("type") == "start_kyoku"),
+                None,
+            )
+            if isinstance(start_kyoku, dict):
+                previous_scores = start_kyoku.get("scores")
+                if isinstance(previous_scores, list) and len(previous_scores) == 4:
+                    deltas = [
+                        score - int(previous_score)
+                        for score, previous_score in zip(current_scores, previous_scores, strict=False)
+                    ]
+
+    event: dict[str, Any] = {"type": "ryukyoku"}
+    if deltas is not None:
+        event["deltas"] = deltas
+    events.append(event)
+    events.append({"type": "end_kyoku"})
+
+    ctx.pending_reach_actor = None
+    ctx.last_discard_actor = None
+
+
 def _convert_action_result(
     result: dict[str, Any],
     ctx: ConversionContext,
@@ -530,6 +566,9 @@ def _convert_action_result(
         return
     if wrapper_type == "RecordNoTile":
         _convert_record_no_tile(result, ctx, events)
+        return
+    if wrapper_type == "RecordLiuJu":
+        _convert_record_liuju(result, ctx, events)
         return
     raise MajsoulMjaiConversionError(f"unsupported record action type: {wrapper_type}")
 
