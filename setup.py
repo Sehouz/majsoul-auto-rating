@@ -62,7 +62,9 @@ class build_py(_build_py):
             return
         target_vendor_dir.mkdir(parents=True, exist_ok=True)
         copy2(SOURCE_VENDOR_DIR / "README.md", target_vendor_dir / "README.md")
-        copytree(SOURCE_VENDOR_DIR / "models", target_vendor_dir / "models")
+        source_models_dir = SOURCE_VENDOR_DIR / "models"
+        if source_models_dir.exists():
+            copytree(source_models_dir, target_vendor_dir / "models")
         copytree(SOURCE_VENDOR_DIR / "mortal_runtime", target_vendor_dir / "mortal_runtime")
         self._prune_vendor_tree(target_vendor_dir)
 
