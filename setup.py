@@ -60,7 +60,10 @@ class build_py(_build_py):
         target_vendor_dir = target_package_dir / "vendor"
         if target_vendor_dir.exists():
             return
-        copytree(SOURCE_VENDOR_DIR, target_vendor_dir)
+        target_vendor_dir.mkdir(parents=True, exist_ok=True)
+        copy2(SOURCE_VENDOR_DIR / "README.md", target_vendor_dir / "README.md")
+        copytree(SOURCE_VENDOR_DIR / "models", target_vendor_dir / "models")
+        copytree(SOURCE_VENDOR_DIR / "mortal_runtime", target_vendor_dir / "mortal_runtime")
         self._prune_vendor_tree(target_vendor_dir)
 
     def _build_platform_libriichi(self) -> None:
@@ -81,12 +84,9 @@ class build_py(_build_py):
         if pycache_dir.exists():
             rmtree(pycache_dir)
 
-        cargo_target_dir = target_vendor_dir / "libriichi-src" / "target"
-        if cargo_target_dir.exists():
-            rmtree(cargo_target_dir)
-        cargo_lock = target_vendor_dir / "libriichi-src" / "Cargo.lock"
-        if cargo_lock.exists():
-            cargo_lock.unlink()
+        libriichi_source_dir = target_vendor_dir / "libriichi-src"
+        if libriichi_source_dir.exists():
+            rmtree(libriichi_source_dir)
 
 
 class bdist_wheel(_bdist_wheel):
