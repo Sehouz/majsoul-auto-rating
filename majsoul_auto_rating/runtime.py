@@ -18,6 +18,7 @@ import importlib
 from importlib.resources import files
 import json
 from pathlib import Path
+import pickle
 import platform
 import sys
 import sysconfig
@@ -47,6 +48,18 @@ def _import_or_raise(name: str, help_text: str) -> Any:
         return importlib.import_module(name)
     except ModuleNotFoundError as exc:
         raise MortalRuntimeError(help_text) from exc
+
+
+def _load_checkpoint(torch_module: Any, path: Path) -> dict[str, Any]:
+    try:
+        return torch_module.load(str(path), weights_only=True, map_location="cpu")
+    except pickle.UnpicklingError as exc:
+        if "Weights only load failed" not in str(exc):
+            raise
+        # The bundled Mortal checkpoints are trusted local assets. PyTorch 2.6+
+        # defaults to weights_only=True, but these older checkpoints include
+        # numpy scalar metadata that still requires the legacy code path.
+        return torch_module.load(str(path), weights_only=False, map_location="cpu")
 
 
 def _libriichi_extension_candidates(runtime_dir: Path) -> list[Path]:
@@ -187,11 +200,7 @@ class MortalRuntime:
         self._bot_class = libriichi_mjai.Bot
         self._grp_class = self._dataset_module.Grp
 
-        self._state = self._torch.load(
-            str(self.paths.model_state_path),
-            weights_only=True,
-            map_location="cpu",
-        )
+        self._state = _load_checkpoint(self._torch, self.paths.model_state_path)
         self.config = self._state["config"]
         self.version = int(self.config["control"].get("version", 1))
         self.num_blocks = int(self.config["resnet"]["num_blocks"])
@@ -250,7 +259,7 @@ class MortalRuntime:
         GRP = self._model_module.GRP
         grp_cfg = dict(self.config.get("grp", {}).get("network", {}))
         grp = GRP(**grp_cfg).eval()
-        grp_state = self._torch.load(str(grp_state_path), weights_only=True, map_location="cpu")
+        grp_state = _load_checkpoint(self._torch, grp_state_path)
         grp.load_state_dict(grp_state["model"])
         grp.to(self.device)
         return grp
