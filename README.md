@@ -180,6 +180,49 @@ uv run python tools/review_mjai_log.py --mjai-log /tmp/game.mjai.jsonl --player-
 Backend selection is available on all runtime tools through `--backend`
 (`torch` or `onnxruntime`).
 
+## Publish Reviewer Reports
+
+You can publish a generated reviewer report JSON to Aliyun OSS and receive both
+the public JSON URL and a viewer URL.
+
+Install the extra first:
+
+```bash
+uv sync --extra oss --extra torch
+```
+
+Example:
+
+```bash
+uv run python tools/publish_review_report.py \
+  --parsed-record /tmp/game_record.json \
+  --player-id 0 \
+  --uuid 260414-37ae1c1e-de1f-4413-894d-6b81a036e8b6 \
+  --backend onnxruntime \
+  --brain-onnx /opt/models/brain.onnx \
+  --dqn-onnx /opt/models/dqn.onnx \
+  --onnx-metadata /opt/models/onnx_metadata.json \
+  --oss-endpoint https://oss-cn-hangzhou.aliyuncs.com \
+  --oss-bucket rabbitbot-report \
+  --oss-access-key-id YOUR_KEY_ID \
+  --oss-access-key-secret YOUR_KEY_SECRET \
+  --oss-public-base-url https://rabbitbot.selenaz.cn \
+  --viewer-base-url https://rabbitbot.selenaz.cn/killerducky/index.html
+```
+
+Object keys follow this pattern:
+
+```text
+report/majsoul/{date}/hash({uuid}_{player_id}_{model_suffix}).json
+```
+
+The filename stays short because only the hash is exposed in the URL. The model
+and backend suffix are folded into the hash input and should be reflected in the
+report's own model tag instead of the public filename.
+
+Published objects are uploaded with `public-read` ACL by default so the returned
+public URL and viewer URL can be opened directly.
+
 ## Packaging Modes
 
 Build a torch-only wheel:

@@ -28,6 +28,8 @@ from .onnx_engine import OrtEnginePaths, OrtMortalEngine
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 DEFAULT_MORTAL_VENDOR_DIR = Path(str(files("majsoul_auto_rating").joinpath("vendor")))
+if not DEFAULT_MORTAL_VENDOR_DIR.exists():
+    DEFAULT_MORTAL_VENDOR_DIR = PACKAGE_ROOT.parent / "vendor"
 DEFAULT_MORTAL_RUNTIME_DIR = DEFAULT_MORTAL_VENDOR_DIR / "mortal_runtime"
 DEFAULT_LIBRIICHI_SOURCE_DIR = DEFAULT_MORTAL_VENDOR_DIR / "libriichi-src"
 DEFAULT_MORTAL_MODEL = DEFAULT_MORTAL_VENDOR_DIR / "models" / "mortal.pth"

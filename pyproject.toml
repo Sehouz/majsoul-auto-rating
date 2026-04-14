@@ -30,6 +30,9 @@ test = [
 tools = [
   "playwright>=1.50,<2",
 ]
+oss = [
+  "oss2>=2.19,<3",
+]
 
 [tool.setuptools]
 packages = ["majsoul", "majsoul.proto", "majsoul_auto_rating"]

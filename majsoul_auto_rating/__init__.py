@@ -21,6 +21,13 @@ from .recent_rating import ReviewFailure as ReviewFailure
 from .recent_rating import ReviewedGame as ReviewedGame
 from .recent_rating import fetch_and_review_recent_games as fetch_and_review_recent_games
 from .recent_rating import review_recent_games as review_recent_games
+from .publish import PublishedReport as PublishedReport
+from .publish import build_public_path as build_public_path
+from .publish import build_report_storage_key as build_report_storage_key
+from .publish import build_viewer_url as build_viewer_url
+from .publish import publish_report_json as publish_report_json
+from .publish_oss import AliyunOssConfig as AliyunOssConfig
+from .publish_oss import AliyunOssPublisher as AliyunOssPublisher
 from .report import ReviewerReport as ReviewerReport
 from .report import build_reviewer_report as build_reviewer_report
 from .review import MortalReviewEntry as MortalReviewEntry
@@ -57,11 +64,14 @@ __all__ = [
     "DEFAULT_TOP_P",
     "FOUR_PLAYER_CATEGORY",
     "MajsoulMjaiConversionError",
+    "AliyunOssConfig",
+    "AliyunOssPublisher",
     "MortalReviewEntry",
     "MortalReviewError",
     "MortalReviewResult",
     "MortalRuntime",
     "MortalRuntimeError",
+    "PublishedReport",
     "ReviewerReport",
     "RuntimeBackend",
     "RecentAccountReviewSummary",
@@ -72,13 +82,17 @@ __all__ = [
     "ReviewFailure",
     "ReviewedGame",
     "authenticated_client",
+    "build_public_path",
+    "build_report_storage_key",
     "build_reviewer_report",
+    "build_viewer_url",
     "convert_parsed_record_to_mjai_events",
     "fetch_and_review_recent_games",
     "fetch_recent_game_uuids",
     "load_mortal_runtime",
     "load_token_payload",
     "parse_res_game_record",
+    "publish_report_json",
     "resolve_auth_inputs",
     "review_mjai_events",
     "review_recent_games",
