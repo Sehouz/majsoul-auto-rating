@@ -101,7 +101,7 @@ def is_wrapper(data: bytes) -> bool:
 
 
 def auto_parse_bytes(
-    data: bytes, recursive: bool = True
+    data: bytes, recursive: bool = True, include_defaults: bool = False
 ) -> Union[Message, Dict[str, Any], bytes]:
     """
     自动判断并解析 bytes，如果是 Wrapper 则解析内部数据，否则返回原始 bytes
@@ -134,7 +134,7 @@ def auto_parse_bytes(
 
             if recursive:
                 # 递归解析内部的 bytes 字段
-                parsed_dict = auto_parse_message_fields(msg)
+                parsed_dict = auto_parse_message_fields(msg, include_defaults=include_defaults)
                 return {
                     "_wrapper_name": wrapper.name,
                     "_wrapper_type": type_name,
@@ -158,7 +158,7 @@ def auto_parse_bytes(
         return data
 
 
-def auto_parse_message_fields(message: Message) -> Dict[str, Any]:
+def auto_parse_message_fields(message: Message, *, include_defaults: bool = False) -> Dict[str, Any]:
     """
     递归转换 protobuf 为 dict，自动解析所有 bytes 字段
 
@@ -177,13 +177,28 @@ def auto_parse_message_fields(message: Message) -> Dict[str, Any]:
         >>> print(json.dumps(parsed, indent=2))
     """
     result = {}
+    present_fields = {field.name: (field, value) for field, value in message.ListFields()}
 
-    for field, value in message.ListFields():
+    for field in message.DESCRIPTOR.fields:
         field_name = field.name
+        field_value = present_fields.get(field_name)
+        if field_value is None:
+            if not include_defaults:
+                continue
+            value = getattr(message, field_name)
+        else:
+            _, value = field_value
 
         if field.type == field.TYPE_BYTES:
+            if field.label == field.LABEL_REPEATED:
+                if not value and not include_defaults:
+                    continue
+                result[field_name] = [item.hex() if isinstance(item, bytes) else item for item in list(value)]
+                continue
             # bytes 字段，尝试自动解析（递归）
-            parsed = auto_parse_bytes(value, recursive=True)
+            if not value and not include_defaults:
+                continue
+            parsed = auto_parse_bytes(value, recursive=True, include_defaults=include_defaults)
             if isinstance(parsed, dict):
                 # 解析成功，已经是 dict 了
                 result[field_name] = parsed
@@ -199,9 +214,11 @@ def auto_parse_message_fields(message: Message) -> Dict[str, Any]:
         elif field.type == field.TYPE_MESSAGE:
             if field.label == field.LABEL_REPEATED:
                 # repeated message，递归处理每个元素
+                if not value and not include_defaults:
+                    continue
                 result[field_name] = [
                     (
-                        auto_parse_message_fields(item)
+                        auto_parse_message_fields(item, include_defaults=include_defaults)
                         if isinstance(item, Message)
                         else item
                     )
@@ -209,13 +226,17 @@ def auto_parse_message_fields(message: Message) -> Dict[str, Any]:
                 ]
             else:
                 # 单个 message，递归处理
+                if field_value is None:
+                    continue
                 if isinstance(value, Message):
-                    result[field_name] = auto_parse_message_fields(value)
+                    result[field_name] = auto_parse_message_fields(value, include_defaults=include_defaults)
                 else:
                     result[field_name] = value
 
         elif field.label == field.LABEL_REPEATED:
             # repeated 基础类型
+            if not value and not include_defaults:
+                continue
             result[field_name] = list(value)
 
         else:

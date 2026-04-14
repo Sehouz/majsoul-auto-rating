@@ -575,8 +575,8 @@ def _convert_action_result(
 
 def parse_res_game_record(record: pb.ResGameRecord) -> dict[str, Any]:
     """Convert a protobuf `ResGameRecord` into a parsed dict."""
-    head = auto_parse_message_fields(record.head)
-    detail = auto_parse_message_fields(parse_wrapper(record.data, pb.GameDetailRecords))
+    head = auto_parse_message_fields(record.head, include_defaults=True)
+    detail = auto_parse_message_fields(parse_wrapper(record.data, pb.GameDetailRecords), include_defaults=True)
     return {"head": head, "data": detail}
 
 

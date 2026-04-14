@@ -36,7 +36,7 @@ DEFAULT_DQN_ONNX = DEFAULT_MORTAL_VENDOR_DIR / "models" / "dqn.onnx"
 DEFAULT_ONNX_METADATA = DEFAULT_MORTAL_VENDOR_DIR / "models" / "onnx_metadata.json"
 DEFAULT_BOLTZMANN_EPSILON = 0.005
 DEFAULT_BOLTZMANN_TEMP = 0.05
-DEFAULT_TOP_P = 1.0
+DEFAULT_TOP_P = 0.1
 RuntimeBackend = Literal["torch", "onnxruntime"]
 
 

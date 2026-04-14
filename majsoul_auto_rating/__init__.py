@@ -21,6 +21,8 @@ from .recent_rating import ReviewFailure as ReviewFailure
 from .recent_rating import ReviewedGame as ReviewedGame
 from .recent_rating import fetch_and_review_recent_games as fetch_and_review_recent_games
 from .recent_rating import review_recent_games as review_recent_games
+from .report import ReviewerReport as ReviewerReport
+from .report import build_reviewer_report as build_reviewer_report
 from .review import MortalReviewEntry as MortalReviewEntry
 from .review import MortalReviewError as MortalReviewError
 from .review import MortalReviewResult as MortalReviewResult
@@ -37,6 +39,8 @@ from .runtime import MortalRuntime as MortalRuntime
 from .runtime import MortalRuntimeError as MortalRuntimeError
 from .runtime import RuntimeBackend as RuntimeBackend
 from .runtime import load_mortal_runtime as load_mortal_runtime
+from .tenhou_raw import split_tenhou_raw_log_by_kyoku as split_tenhou_raw_log_by_kyoku
+from .tenhou_raw import to_tenhou_raw_log as to_tenhou_raw_log
 
 __all__ = [
     "AccountCandidate",
@@ -58,6 +62,7 @@ __all__ = [
     "MortalReviewResult",
     "MortalRuntime",
     "MortalRuntimeError",
+    "ReviewerReport",
     "RuntimeBackend",
     "RecentAccountReviewSummary",
     "RecentGame",
@@ -67,6 +72,7 @@ __all__ = [
     "ReviewFailure",
     "ReviewedGame",
     "authenticated_client",
+    "build_reviewer_report",
     "convert_parsed_record_to_mjai_events",
     "fetch_and_review_recent_games",
     "fetch_recent_game_uuids",
@@ -76,4 +82,6 @@ __all__ = [
     "resolve_auth_inputs",
     "review_mjai_events",
     "review_recent_games",
+    "split_tenhou_raw_log_by_kyoku",
+    "to_tenhou_raw_log",
 ]
