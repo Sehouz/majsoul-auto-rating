@@ -55,14 +55,19 @@ def _import_or_raise(name: str, help_text: str) -> Any:
 
 def _load_checkpoint(torch_module: Any, path: Path) -> dict[str, Any]:
     try:
-        return torch_module.load(str(path), weights_only=True, map_location="cpu")
+        return torch_module.load(str(path), weights_only=True, map_location="cpu", mmap=True)
     except pickle.UnpicklingError as exc:
         if "Weights only load failed" not in str(exc):
             raise
         # The bundled Mortal checkpoints are trusted local assets. PyTorch 2.6+
         # defaults to weights_only=True, but these older checkpoints include
         # numpy scalar metadata that still requires the legacy code path.
-        return torch_module.load(str(path), weights_only=False, map_location="cpu")
+        return torch_module.load(str(path), weights_only=False, map_location="cpu", mmap=True)
+
+
+def _init_module_on_meta(torch_module: Any, factory: Any, /, *args: Any, **kwargs: Any) -> Any:
+    with torch_module.device("meta"):
+        return factory(*args, **kwargs)
 
 
 def _libriichi_extension_candidates(runtime_dir: Path) -> list[Path]:
@@ -209,12 +214,12 @@ class MortalRuntime:
         self._bot_class = libriichi_mjai.Bot
         self._grp_class = self._dataset_module.Grp
 
-        self._state = _load_checkpoint(self._torch, self.paths.model_state_path)
-        self.config = self._state["config"]
+        state = _load_checkpoint(self._torch, self.paths.model_state_path)
+        self.config = state["config"]
         self.version = int(self.config["control"].get("version", 1))
         self.num_blocks = int(self.config["resnet"]["num_blocks"])
         self.conv_channels = int(self.config["resnet"]["conv_channels"])
-        self.model_tag = self._build_model_tag(self._state, self.version, self.num_blocks, self.conv_channels)
+        self.model_tag = self._build_model_tag(state, self.version, self.num_blocks, self.conv_channels)
 
         self.device = self._torch.device(self.device_name)
 
@@ -222,14 +227,17 @@ class MortalRuntime:
         DQN = self._model_module.DQN
         MortalEngine = self._engine_module.MortalEngine
 
-        self.brain = Brain(
+        self.brain = _init_module_on_meta(
+            self._torch,
+            Brain,
             version=self.version,
             num_blocks=self.num_blocks,
             conv_channels=self.conv_channels,
         ).eval()
-        self.dqn = DQN(version=self.version).eval()
-        self.brain.load_state_dict(self._state["mortal"])
-        self.dqn.load_state_dict(self._state["current_dqn"])
+        self.dqn = _init_module_on_meta(self._torch, DQN, version=self.version).eval()
+        self.brain.load_state_dict(state["mortal"], assign=True)
+        self.dqn.load_state_dict(state["current_dqn"], assign=True)
+        del state
 
         self.engine = MortalEngine(
             self.brain,
@@ -270,9 +278,10 @@ class MortalRuntime:
 
         GRP = self._model_module.GRP
         grp_cfg = dict(self.config.get("grp", {}).get("network", {}))
-        grp = GRP(**grp_cfg).eval()
+        grp = _init_module_on_meta(self._torch, GRP, **grp_cfg).eval()
         grp_state = _load_checkpoint(self._torch, grp_state_path)
-        grp.load_state_dict(grp_state["model"])
+        grp.load_state_dict(grp_state["model"], assign=True)
+        del grp_state
         grp.to(self.device)
         return grp
 
