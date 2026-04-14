@@ -59,6 +59,11 @@ class build_py(_build_py):
     def _copy_vendor_tree(self) -> None:
         target_package_dir = Path(self.build_lib) / PACKAGE_NAME
         target_vendor_dir = target_package_dir / "vendor"
+        target_data_dir = target_package_dir / "data"
+        if not target_data_dir.exists():
+            source_data_dir = REPO_ROOT / PACKAGE_NAME / "data"
+            if source_data_dir.exists():
+                copytree(source_data_dir, target_data_dir)
         if target_vendor_dir.exists():
             return
         target_vendor_dir.mkdir(parents=True, exist_ok=True)

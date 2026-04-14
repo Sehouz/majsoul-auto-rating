@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from importlib.resources import files
 from pathlib import Path
 from typing import Any
 
@@ -313,7 +314,7 @@ def _tm2t(tile: str) -> int:
 def _tensoul_data() -> dict[str, Any]:
     global _TENSOUL_DATA
     if _TENSOUL_DATA is None:
-        data_path = Path("/Users/sehouz/ZLTV/tensoul/data.json")
+        data_path = Path(str(files("majsoul_auto_rating").joinpath("data"))) / "tensoul_data.json"
         _TENSOUL_DATA = json.loads(data_path.read_text(encoding="utf-8"))
     return _TENSOUL_DATA
 
