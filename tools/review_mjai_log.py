@@ -9,7 +9,8 @@ import json
 from majsoul_auto_rating import (
     DEFAULT_BOLTZMANN_EPSILON,
     DEFAULT_BOLTZMANN_TEMP,
-    DEFAULT_GRP_MODEL,
+    DEFAULT_BRAIN_ONNX,
+    DEFAULT_DQN_ONNX,
     DEFAULT_MORTAL_MODEL,
     DEFAULT_MORTAL_VENDOR_DIR,
     DEFAULT_TOP_P,
@@ -26,11 +27,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mjai-log", help="MJAI JSONL file")
     parser.add_argument("--player-id", type=int, required=True, help="Target player id")
     parser.add_argument("--device", default="cpu", help="Torch device")
+    parser.add_argument("--backend", choices=["torch", "onnxruntime"], default="torch", help="Inference backend")
     parser.add_argument("--show-entries", type=int, default=5, help="Print first N review entries")
-    parser.add_argument("--with-phi", action="store_true", help="Compute phi matrix")
     parser.add_argument("--mortal-vendor-dir", default=str(DEFAULT_MORTAL_VENDOR_DIR))
     parser.add_argument("--model", default=str(DEFAULT_MORTAL_MODEL))
-    parser.add_argument("--grp-model", default=str(DEFAULT_GRP_MODEL))
+    parser.add_argument("--brain-onnx", default=str(DEFAULT_BRAIN_ONNX))
+    parser.add_argument("--dqn-onnx", default=str(DEFAULT_DQN_ONNX))
     parser.add_argument("--boltzmann-epsilon", type=float, default=DEFAULT_BOLTZMANN_EPSILON)
     parser.add_argument("--boltzmann-temp", type=float, default=DEFAULT_BOLTZMANN_TEMP)
     parser.add_argument("--top-p", type=float, default=DEFAULT_TOP_P)
@@ -41,12 +43,13 @@ def main() -> int:
     args = build_parser().parse_args()
     events = load_events(parsed_record=args.parsed_record, mjai_log=args.mjai_log)
     runtime = load_mortal_runtime(
+        backend=args.backend,
         mortal_vendor_dir=args.mortal_vendor_dir,
         model_state_path=args.model,
-        grp_state_path=args.grp_model,
+        brain_onnx_path=args.brain_onnx,
+        dqn_onnx_path=args.dqn_onnx,
         device=args.device,
         enable_quick_eval=False,
-        load_grp=args.with_phi,
         boltzmann_epsilon=args.boltzmann_epsilon,
         boltzmann_temp=args.boltzmann_temp,
         top_p=args.top_p,
@@ -55,7 +58,6 @@ def main() -> int:
         events,
         player_id=args.player_id,
         runtime=runtime,
-        include_phi_matrix=args.with_phi,
     )
 
     summary = {
@@ -83,13 +85,6 @@ def main() -> int:
             "actual_q_value": entry.actual_q_value,
         }
         print(json.dumps(payload, ensure_ascii=False))
-
-    if result.phi_matrix is not None:
-        print("\nPhi matrix summary:")
-        print(json.dumps({
-            "kyoku_count": len(result.phi_matrix),
-            "first_kyoku": result.phi_matrix[0] if result.phi_matrix else None,
-        }, ensure_ascii=False, indent=2))
     return 0
 
 

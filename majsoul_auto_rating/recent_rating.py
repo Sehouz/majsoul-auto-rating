@@ -147,7 +147,6 @@ def _review_single_game(
     account_id: int,
     runtime: MortalRuntime | None,
     reviewer: ReviewCallable,
-    include_phi_matrix: bool,
 ) -> ReviewedGame:
     parsed_record = _parse_record(record)
     player_id = _resolve_player_id(parsed_record["head"], account_id)
@@ -156,7 +155,6 @@ def _review_single_game(
         events,
         player_id=player_id,
         runtime=runtime,
-        include_phi_matrix=include_phi_matrix,
     )
     return ReviewedGame(
         uuid=game.uuid,
@@ -232,7 +230,6 @@ async def review_recent_games(
     requested_count: int | None = None,
     runtime: MortalRuntime | None = None,
     reviewer: ReviewCallable = review_mjai_events,
-    include_phi_matrix: bool = False,
     strict: bool = False,
 ) -> RecentAccountReviewSummary:
     server = str(getattr(client, "server", "") or "")
@@ -249,7 +246,6 @@ async def review_recent_games(
                     account_id=account.account_id,
                     runtime=runtime,
                     reviewer=reviewer,
-                    include_phi_matrix=include_phi_matrix,
                 )
             )
         except Exception as exc:
@@ -279,7 +275,6 @@ async def fetch_and_review_recent_games(
     game_type: int = DEFAULT_TYPE,
     runtime: MortalRuntime | None = None,
     reviewer: ReviewCallable = review_mjai_events,
-    include_phi_matrix: bool = False,
     strict: bool = False,
 ) -> RecentAccountReviewSummary:
     if uid is None and eid is None:
@@ -306,7 +301,6 @@ async def fetch_and_review_recent_games(
         requested_count=count,
         runtime=runtime,
         reviewer=reviewer,
-        include_phi_matrix=include_phi_matrix,
         strict=strict,
     )
 

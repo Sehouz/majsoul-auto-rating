@@ -7,7 +7,6 @@ spawning its CLI process. It intentionally keeps the surface small:
 - load Mortal model state
 - create `libriichi.mjai.Bot` sessions
 - feed MJAI events and receive structured reactions with metadata
-- compute GRP / phi matrix for a full MJAI log
 """
 
 from __future__ import annotations
@@ -22,7 +21,9 @@ import pickle
 import platform
 import sys
 import sysconfig
-from typing import Any
+from typing import Any, Literal
+
+from .onnx_engine import OrtEnginePaths, OrtMortalEngine
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -30,10 +31,13 @@ DEFAULT_MORTAL_VENDOR_DIR = Path(str(files("majsoul_auto_rating").joinpath("vend
 DEFAULT_MORTAL_RUNTIME_DIR = DEFAULT_MORTAL_VENDOR_DIR / "mortal_runtime"
 DEFAULT_LIBRIICHI_SOURCE_DIR = DEFAULT_MORTAL_VENDOR_DIR / "libriichi-src"
 DEFAULT_MORTAL_MODEL = DEFAULT_MORTAL_VENDOR_DIR / "models" / "mortal.pth"
-DEFAULT_GRP_MODEL = DEFAULT_MORTAL_VENDOR_DIR / "models" / "grp.pth"
+DEFAULT_BRAIN_ONNX = DEFAULT_MORTAL_VENDOR_DIR / "models" / "brain.onnx"
+DEFAULT_DQN_ONNX = DEFAULT_MORTAL_VENDOR_DIR / "models" / "dqn.onnx"
+DEFAULT_ONNX_METADATA = DEFAULT_MORTAL_VENDOR_DIR / "models" / "onnx_metadata.json"
 DEFAULT_BOLTZMANN_EPSILON = 0.005
 DEFAULT_BOLTZMANN_TEMP = 0.05
 DEFAULT_TOP_P = 1.0
+RuntimeBackend = Literal["torch", "onnxruntime"]
 
 
 class MortalRuntimeError(RuntimeError):
@@ -87,7 +91,9 @@ class MortalPaths:
     mortal_runtime_dir: Path = DEFAULT_MORTAL_RUNTIME_DIR
     libriichi_source_dir: Path = DEFAULT_LIBRIICHI_SOURCE_DIR
     model_state_path: Path = DEFAULT_MORTAL_MODEL
-    grp_state_path: Path | None = DEFAULT_GRP_MODEL
+    brain_onnx_path: Path = DEFAULT_BRAIN_ONNX
+    dqn_onnx_path: Path = DEFAULT_DQN_ONNX
+    onnx_metadata_path: Path = DEFAULT_ONNX_METADATA
 
 
 @dataclass(frozen=True)
@@ -102,7 +108,6 @@ class MortalLogSummary:
     reaction_count: int
     reactions: list[MortalReaction]
     model_tag: str
-    phi_matrix: list[list[list[float]]] | None
 
 
 class MortalBotSession:
@@ -152,16 +157,17 @@ class MortalRuntime:
         self,
         *,
         paths: MortalPaths,
+        backend: RuntimeBackend = "torch",
         device: str = "cpu",
         enable_amp: bool = False,
         enable_quick_eval: bool = False,
         enable_rule_based_agari_guard: bool = True,
-        load_grp: bool = True,
         boltzmann_epsilon: float = DEFAULT_BOLTZMANN_EPSILON,
         boltzmann_temp: float = DEFAULT_BOLTZMANN_TEMP,
         top_p: float = DEFAULT_TOP_P,
     ) -> None:
         self.paths = paths
+        self.backend = backend
         self.device_name = device
         self.enable_amp = bool(enable_amp)
         self.enable_quick_eval = bool(enable_quick_eval)
@@ -183,16 +189,31 @@ class MortalRuntime:
                 "Vendored libriichi extension is missing. Build it from "
                 f"{self.paths.libriichi_source_dir} and copy the result into {self.paths.mortal_runtime_dir}."
             )
+
+        _ensure_sys_path(self.paths.mortal_runtime_dir)
+
+        libriichi_mjai = _import_or_raise(
+            "libriichi.mjai",
+            f"Failed to import vendored `libriichi.mjai` from {self.paths.mortal_runtime_dir}",
+        )
+        self._bot_class = libriichi_mjai.Bot
+
+        if self.backend == "torch":
+            self._init_torch_backend()
+        elif self.backend == "onnxruntime":
+            self._init_onnx_backend()
+        else:
+            raise MortalRuntimeError(f"unsupported backend: {self.backend!r}")
+
+    def _init_torch_backend(self) -> None:
         if not self.paths.model_state_path.exists():
             raise MortalRuntimeError(
                 f"Mortal model state does not exist: {self.paths.model_state_path}"
             )
 
-        _ensure_sys_path(self.paths.mortal_runtime_dir)
-
         self._torch = _import_or_raise(
             "torch",
-            "Missing Python dependency `torch`. Use Mortal's Python environment or install torch first.",
+            "Missing Python dependency `torch`. Install the torch backend dependencies first.",
         )
         self._model_module = _import_or_raise(
             "model",
@@ -202,25 +223,13 @@ class MortalRuntime:
             "engine",
             f"Failed to import vendored Mortal runtime module `engine` from {self.paths.mortal_runtime_dir}",
         )
-        libriichi_mjai = _import_or_raise(
-            "libriichi.mjai",
-            f"Failed to import vendored `libriichi.mjai` from {self.paths.mortal_runtime_dir}",
-        )
-        self._dataset_module = _import_or_raise(
-            "libriichi.dataset",
-            f"Failed to import vendored `libriichi.dataset` from {self.paths.mortal_runtime_dir}",
-        )
-
-        self._bot_class = libriichi_mjai.Bot
-        self._grp_class = self._dataset_module.Grp
 
         state = _load_checkpoint(self._torch, self.paths.model_state_path)
-        self.config = state["config"]
-        self.version = int(self.config["control"].get("version", 1))
-        self.num_blocks = int(self.config["resnet"]["num_blocks"])
-        self.conv_channels = int(self.config["resnet"]["conv_channels"])
+        config = state["config"]
+        self.version = int(config["control"].get("version", 1))
+        self.num_blocks = int(config["resnet"]["num_blocks"])
+        self.conv_channels = int(config["resnet"]["conv_channels"])
         self.model_tag = self._build_model_tag(state, self.version, self.num_blocks, self.conv_channels)
-
         self.device = self._torch.device(self.device_name)
 
         Brain = self._model_module.Brain
@@ -254,9 +263,45 @@ class MortalRuntime:
             top_p=self.top_p,
         )
 
-        self.grp = None
-        if load_grp:
-            self.grp = self._load_grp()
+    def _init_onnx_backend(self) -> None:
+        if not self.paths.brain_onnx_path.exists():
+            raise MortalRuntimeError(
+                f"Brain ONNX model does not exist: {self.paths.brain_onnx_path}"
+            )
+        if not self.paths.dqn_onnx_path.exists():
+            raise MortalRuntimeError(
+                f"DQN ONNX model does not exist: {self.paths.dqn_onnx_path}"
+            )
+        if not self.paths.onnx_metadata_path.exists():
+            raise MortalRuntimeError(
+                f"ONNX metadata does not exist: {self.paths.onnx_metadata_path}"
+            )
+
+        metadata = json.loads(self.paths.onnx_metadata_path.read_text(encoding="utf-8"))
+        self.version = int(metadata["version"])
+        self.num_blocks = int(metadata["num_blocks"])
+        self.conv_channels = int(metadata["conv_channels"])
+        self.model_tag = str(metadata["model_tag"])
+
+        _import_or_raise(
+            "onnxruntime",
+            "Missing Python dependency `onnxruntime`. Install the onnxruntime backend dependencies first.",
+        )
+
+        self.engine = OrtMortalEngine(
+            paths=OrtEnginePaths(
+                brain_onnx_path=self.paths.brain_onnx_path,
+                dqn_onnx_path=self.paths.dqn_onnx_path,
+            ),
+            is_oracle=False,
+            version=self.version,
+            enable_quick_eval=self.enable_quick_eval,
+            enable_rule_based_agari_guard=self.enable_rule_based_agari_guard,
+            name=self.model_tag,
+            boltzmann_epsilon=self.boltzmann_epsilon,
+            boltzmann_temp=self.boltzmann_temp,
+            top_p=self.top_p,
+        )
 
     @staticmethod
     def _build_model_tag(state: dict[str, Any], version: int, num_blocks: int, conv_channels: int) -> str:
@@ -269,41 +314,8 @@ class MortalRuntime:
         dt = datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%y%m%d%H")
         return f"mortal{version}-b{num_blocks}c{conv_channels}-t{dt}"
 
-    def _load_grp(self) -> Any | None:
-        grp_state_path = self.paths.grp_state_path
-        if grp_state_path is None:
-            return None
-        if not grp_state_path.exists():
-            return None
-
-        GRP = self._model_module.GRP
-        grp_cfg = dict(self.config.get("grp", {}).get("network", {}))
-        grp = _init_module_on_meta(self._torch, GRP, **grp_cfg).eval()
-        grp_state = _load_checkpoint(self._torch, grp_state_path)
-        grp.load_state_dict(grp_state["model"], assign=True)
-        del grp_state
-        grp.to(self.device)
-        return grp
-
     def create_bot(self, player_id: int) -> MortalBotSession:
         return MortalBotSession(self, player_id)
-
-    def compute_phi_matrix(self, events: list[dict[str, Any]]) -> list[list[list[float]]] | None:
-        if self.grp is None:
-            return None
-
-        raw_log = "\n".join(json.dumps(event, ensure_ascii=False) for event in events)
-        grp_log = self._grp_class.load_log(raw_log)
-        feature = grp_log.take_feature()
-        seq = [
-            self._torch.as_tensor(feature[: index + 1], dtype=self._torch.float32, device=self.device)
-            for index in range(len(feature))
-        ]
-
-        with self._torch.inference_mode():
-            logits = self.grp(seq)
-            matrix = self.grp.calc_matrix(logits)
-        return matrix.tolist()
 
     def analyze_log(
         self,
@@ -311,56 +323,63 @@ class MortalRuntime:
         *,
         player_id: int,
         include_none: bool = False,
-        include_phi_matrix: bool = True,
     ) -> MortalLogSummary:
         bot = self.create_bot(player_id)
         reactions = bot.react_many(events, include_none=include_none)
-        phi_matrix = self.compute_phi_matrix(events) if include_phi_matrix else None
         return MortalLogSummary(
             reaction_count=len(reactions),
             reactions=reactions,
             model_tag=self.model_tag,
-            phi_matrix=phi_matrix,
         )
 
 
 def load_mortal_runtime(
     *,
+    backend: RuntimeBackend = "torch",
     model_state_path: Path | str = DEFAULT_MORTAL_MODEL,
-    grp_state_path: Path | str | None = DEFAULT_GRP_MODEL,
+    brain_onnx_path: Path | str = DEFAULT_BRAIN_ONNX,
+    dqn_onnx_path: Path | str = DEFAULT_DQN_ONNX,
+    onnx_metadata_path: Path | str = DEFAULT_ONNX_METADATA,
     mortal_vendor_dir: Path | str = DEFAULT_MORTAL_VENDOR_DIR,
     device: str = "cpu",
     enable_amp: bool = False,
     enable_quick_eval: bool = False,
     enable_rule_based_agari_guard: bool = True,
-    load_grp: bool = True,
     boltzmann_epsilon: float = DEFAULT_BOLTZMANN_EPSILON,
     boltzmann_temp: float = DEFAULT_BOLTZMANN_TEMP,
     top_p: float = DEFAULT_TOP_P,
 ) -> MortalRuntime:
     vendor_dir = Path(mortal_vendor_dir)
     resolved_model_state_path = Path(model_state_path)
-    resolved_grp_state_path = None if grp_state_path is None else Path(grp_state_path)
+    resolved_brain_onnx_path = Path(brain_onnx_path)
+    resolved_dqn_onnx_path = Path(dqn_onnx_path)
+    resolved_onnx_metadata_path = Path(onnx_metadata_path)
 
     if resolved_model_state_path == DEFAULT_MORTAL_MODEL:
         resolved_model_state_path = vendor_dir / "models" / "mortal.pth"
-    if resolved_grp_state_path == DEFAULT_GRP_MODEL:
-        resolved_grp_state_path = vendor_dir / "models" / "grp.pth"
+    if resolved_brain_onnx_path == DEFAULT_BRAIN_ONNX:
+        resolved_brain_onnx_path = vendor_dir / "models" / "brain.onnx"
+    if resolved_dqn_onnx_path == DEFAULT_DQN_ONNX:
+        resolved_dqn_onnx_path = vendor_dir / "models" / "dqn.onnx"
+    if resolved_onnx_metadata_path == DEFAULT_ONNX_METADATA:
+        resolved_onnx_metadata_path = vendor_dir / "models" / "onnx_metadata.json"
 
     paths = MortalPaths(
         mortal_vendor_dir=vendor_dir,
         mortal_runtime_dir=vendor_dir / "mortal_runtime",
         libriichi_source_dir=vendor_dir / "libriichi-src",
         model_state_path=resolved_model_state_path,
-        grp_state_path=resolved_grp_state_path,
+        brain_onnx_path=resolved_brain_onnx_path,
+        dqn_onnx_path=resolved_dqn_onnx_path,
+        onnx_metadata_path=resolved_onnx_metadata_path,
     )
     return MortalRuntime(
         paths=paths,
+        backend=backend,
         device=device,
         enable_amp=enable_amp,
         enable_quick_eval=enable_quick_eval,
         enable_rule_based_agari_guard=enable_rule_based_agari_guard,
-        load_grp=load_grp,
         boltzmann_epsilon=boltzmann_epsilon,
         boltzmann_temp=boltzmann_temp,
         top_p=top_p,
@@ -370,10 +389,12 @@ def load_mortal_runtime(
 __all__ = [
     "DEFAULT_BOLTZMANN_EPSILON",
     "DEFAULT_BOLTZMANN_TEMP",
-    "DEFAULT_GRP_MODEL",
+    "DEFAULT_BRAIN_ONNX",
+    "DEFAULT_DQN_ONNX",
     "DEFAULT_MORTAL_MODEL",
     "DEFAULT_MORTAL_RUNTIME_DIR",
     "DEFAULT_MORTAL_VENDOR_DIR",
+    "DEFAULT_ONNX_METADATA",
     "DEFAULT_TOP_P",
     "DEFAULT_LIBRIICHI_SOURCE_DIR",
     "MortalBotSession",
@@ -382,5 +403,6 @@ __all__ = [
     "MortalReaction",
     "MortalRuntime",
     "MortalRuntimeError",
+    "RuntimeBackend",
     "load_mortal_runtime",
 ]

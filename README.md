@@ -88,7 +88,7 @@ The project vendors the Mortal runtime assets locally under
 `majsoul_auto_rating.runtime` and `majsoul_auto_rating.review`.
 
 These modules do not spawn the Mortal CLI. They load the model directly,
-create `libriichi.mjai.Bot` sessions in-process, and can compute a lightweight
+create `libriichi.mjai.Bot` sessions in-process, and compute a lightweight
 review result.
 
 Vendored assets now include:
@@ -97,10 +97,37 @@ Vendored assets now include:
 - `libriichi.so`
 - `libriichi` Rust source
 - `mortal.pth`
-- GRP model
+- optional `brain.onnx` / `dqn.onnx`
 
-At the moment, Python package dependencies still need to exist in the active
-environment, especially `torch`, `numpy`, `toml`, and a recent `protobuf`.
+Install exactly one backend environment at a time:
+
+```bash
+uv sync --extra test --extra torch
+```
+
+or:
+
+```bash
+uv sync --extra test --extra onnxruntime
+```
+
+The shared package dependencies still need to exist in the active environment,
+including `numpy`, `toml`, and a recent `protobuf`.
+
+For the ONNX Runtime backend, export the ONNX assets once from the Mortal
+checkpoint:
+
+```bash
+uv run python tools/export_mortal_onnx.py
+```
+
+This writes:
+
+- `vendor/models/brain.onnx`
+- `vendor/models/dqn.onnx`
+- `vendor/models/onnx_metadata.json`
+
+alongside the ONNX external data files.
 The project no longer needs to import code from `/Users/sehouz/Mahjang/Mortal`
 at runtime.
 
@@ -118,6 +145,12 @@ Smoke test the embedded runtime with an existing MJAI log:
 
 ```bash
 uv run python tools/runtime_smoke.py --mjai-log /tmp/game.mjai.jsonl --player-id 0
+```
+
+Use the ONNX Runtime backend instead:
+
+```bash
+uv run python tools/runtime_smoke.py --backend onnxruntime --mjai-log /tmp/game.mjai.jsonl --player-id 0
 ```
 
 By default the embedded runtime now mirrors Mortal's `train_play.default`
@@ -143,6 +176,30 @@ Run the lightweight in-process review:
 ```bash
 uv run python tools/review_mjai_log.py --mjai-log /tmp/game.mjai.jsonl --player-id 0
 ```
+
+Backend selection is available on all runtime tools through `--backend`
+(`torch` or `onnxruntime`).
+
+## Packaging Modes
+
+Build a torch-only wheel:
+
+```bash
+MAJSOUL_PACKAGE_BACKEND=torch uv build
+```
+
+Build an onnxruntime-only wheel:
+
+```bash
+MAJSOUL_PACKAGE_BACKEND=onnxruntime uv build
+```
+
+The build mode only affects packaged model assets:
+
+- `torch` mode keeps `mortal.pth` and prunes ONNX files
+- `onnxruntime` mode keeps ONNX files plus `onnx_metadata.json` and prunes `mortal.pth`
+
+Dependency installation is still controlled by the selected optional extra.
 
 ## Recent User Rating
 

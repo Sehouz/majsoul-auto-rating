@@ -23,3 +23,6 @@ vendor/models/*.pth
 
 # Local test/runtime artifacts
 tests/.tmp/
+
+# Research artifacts
+research/**/artifacts/

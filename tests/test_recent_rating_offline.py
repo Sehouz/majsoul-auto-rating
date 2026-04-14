@@ -64,9 +64,8 @@ def fake_reviewer(
     *,
     player_id: int,
     runtime=None,
-    include_phi_matrix: bool = False,
 ) -> MortalReviewResult:
-    del runtime, include_phi_matrix
+    del runtime
     ryukyoku_event = next(event for event in events if event["type"] == "ryukyoku")
     bonus = ryukyoku_event.get("deltas", [0])[0]
     assert player_id == 0
@@ -92,7 +91,6 @@ def fake_reviewer(
         boltzmann_epsilon=0.005,
         boltzmann_temp=0.05,
         top_p=1.0,
-        phi_matrix=None,
         entries=[],
     )
 

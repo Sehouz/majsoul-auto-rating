@@ -16,6 +16,7 @@ PACKAGE_NAME = "majsoul_auto_rating"
 REPO_ROOT = Path(__file__).resolve().parent
 SOURCE_VENDOR_DIR = REPO_ROOT / "vendor"
 SOURCE_LIBRIICHI_DIR = SOURCE_VENDOR_DIR / "libriichi-src"
+PACKAGE_MODE = os.environ.get("MAJSOUL_PACKAGE_BACKEND", "torch")
 
 
 def _libriichi_extension_name() -> str:
@@ -64,7 +65,9 @@ class build_py(_build_py):
         copy2(SOURCE_VENDOR_DIR / "README.md", target_vendor_dir / "README.md")
         source_models_dir = SOURCE_VENDOR_DIR / "models"
         if source_models_dir.exists():
-            copytree(source_models_dir, target_vendor_dir / "models")
+            copied_models_dir = target_vendor_dir / "models"
+            copytree(source_models_dir, copied_models_dir)
+            self._prune_models(copied_models_dir)
         copytree(SOURCE_VENDOR_DIR / "mortal_runtime", target_vendor_dir / "mortal_runtime")
         self._prune_vendor_tree(target_vendor_dir)
 
@@ -89,6 +92,20 @@ class build_py(_build_py):
         libriichi_source_dir = target_vendor_dir / "libriichi-src"
         if libriichi_source_dir.exists():
             rmtree(libriichi_source_dir)
+
+    def _prune_models(self, target_models_dir: Path) -> None:
+        if PACKAGE_MODE == "torch":
+            for name in ("brain.onnx", "brain.onnx.data", "dqn.onnx", "dqn.onnx.data", "onnx_metadata.json"):
+                path = target_models_dir / name
+                if path.exists():
+                    path.unlink()
+            return
+        if PACKAGE_MODE == "onnxruntime":
+            mortal_path = target_models_dir / "mortal.pth"
+            if mortal_path.exists():
+                mortal_path.unlink()
+            return
+        raise RuntimeError(f"unsupported MAJSOUL_PACKAGE_BACKEND={PACKAGE_MODE!r}")
 
 
 class bdist_wheel(_bdist_wheel):

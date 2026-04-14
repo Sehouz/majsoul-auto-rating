@@ -57,7 +57,6 @@ class MortalReviewResult:
     boltzmann_epsilon: float
     boltzmann_temp: float
     top_p: float
-    phi_matrix: list[list[list[float]]] | None
     entries: list[MortalReviewEntry]
 
 
@@ -259,10 +258,9 @@ def review_mjai_events(
     *,
     player_id: int,
     runtime: MortalRuntime | None = None,
-    include_phi_matrix: bool = True,
 ) -> MortalReviewResult:
     if runtime is None:
-        runtime = load_mortal_runtime(load_grp=include_phi_matrix)
+        runtime = load_mortal_runtime()
 
     bot = runtime.create_bot(player_id)
     entries: list[MortalReviewEntry] = []
@@ -323,7 +321,6 @@ def review_mjai_events(
             )
         )
 
-    phi_matrix = runtime.compute_phi_matrix(events) if include_phi_matrix else None
     rating = 0.0 if total_reviewed == 0 else math.pow(raw_rating / total_reviewed, 2)
     return MortalReviewResult(
         total_reviewed=total_reviewed,
@@ -335,7 +332,6 @@ def review_mjai_events(
         boltzmann_epsilon=float(getattr(runtime, "boltzmann_epsilon", DEFAULT_BOLTZMANN_EPSILON)),
         boltzmann_temp=float(getattr(runtime, "boltzmann_temp", DEFAULT_BOLTZMANN_TEMP)),
         top_p=float(getattr(runtime, "top_p", DEFAULT_TOP_P)),
-        phi_matrix=phi_matrix,
         entries=entries,
     )
 

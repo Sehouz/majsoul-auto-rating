@@ -16,7 +16,8 @@ from majsoul_auto_rating import (
     FOUR_PLAYER_CATEGORY,
     DEFAULT_BOLTZMANN_EPSILON,
     DEFAULT_BOLTZMANN_TEMP,
-    DEFAULT_GRP_MODEL,
+    DEFAULT_BRAIN_ONNX,
+    DEFAULT_DQN_ONNX,
     DEFAULT_MORTAL_MODEL,
     DEFAULT_MORTAL_VENDOR_DIR,
     DEFAULT_TOP_P,
@@ -40,11 +41,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--type", dest="game_type", type=int, default=DEFAULT_TYPE, help="fetchAccountInfoExtra type")
     parser.add_argument("--request-timeout", type=float, default=30.0, help="Request timeout in seconds")
     parser.add_argument("--device", default="cpu", help="Torch device")
-    parser.add_argument("--with-phi", action="store_true", help="Also compute GRP phi matrix for each game")
+    parser.add_argument("--backend", choices=["torch", "onnxruntime"], default="torch", help="Inference backend")
     parser.add_argument("--strict", action="store_true", help="Fail fast when any single paipu review fails")
     parser.add_argument("--mortal-vendor-dir", default=str(DEFAULT_MORTAL_VENDOR_DIR))
     parser.add_argument("--model", default=str(DEFAULT_MORTAL_MODEL))
-    parser.add_argument("--grp-model", default=str(DEFAULT_GRP_MODEL))
+    parser.add_argument("--brain-onnx", default=str(DEFAULT_BRAIN_ONNX))
+    parser.add_argument("--dqn-onnx", default=str(DEFAULT_DQN_ONNX))
     parser.add_argument("--boltzmann-epsilon", type=float, default=DEFAULT_BOLTZMANN_EPSILON)
     parser.add_argument("--boltzmann-temp", type=float, default=DEFAULT_BOLTZMANN_TEMP)
     parser.add_argument("--top-p", type=float, default=DEFAULT_TOP_P)
@@ -53,12 +55,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 async def run_query(args: argparse.Namespace) -> int:
     runtime = load_mortal_runtime(
+        backend=args.backend,
         mortal_vendor_dir=args.mortal_vendor_dir,
         model_state_path=args.model,
-        grp_state_path=args.grp_model,
+        brain_onnx_path=args.brain_onnx,
+        dqn_onnx_path=args.dqn_onnx,
         device=args.device,
         enable_quick_eval=False,
-        load_grp=args.with_phi,
         boltzmann_epsilon=args.boltzmann_epsilon,
         boltzmann_temp=args.boltzmann_temp,
         top_p=args.top_p,
@@ -78,7 +81,6 @@ async def run_query(args: argparse.Namespace) -> int:
             category=FOUR_PLAYER_CATEGORY,
             game_type=args.game_type,
             runtime=runtime,
-            include_phi_matrix=args.with_phi,
             strict=args.strict,
         )
 

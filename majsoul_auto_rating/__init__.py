@@ -27,12 +27,15 @@ from .review import MortalReviewResult as MortalReviewResult
 from .review import review_mjai_events as review_mjai_events
 from .runtime import DEFAULT_BOLTZMANN_EPSILON as DEFAULT_BOLTZMANN_EPSILON
 from .runtime import DEFAULT_BOLTZMANN_TEMP as DEFAULT_BOLTZMANN_TEMP
-from .runtime import DEFAULT_GRP_MODEL as DEFAULT_GRP_MODEL
+from .runtime import DEFAULT_BRAIN_ONNX as DEFAULT_BRAIN_ONNX
+from .runtime import DEFAULT_DQN_ONNX as DEFAULT_DQN_ONNX
 from .runtime import DEFAULT_MORTAL_MODEL as DEFAULT_MORTAL_MODEL
 from .runtime import DEFAULT_MORTAL_VENDOR_DIR as DEFAULT_MORTAL_VENDOR_DIR
+from .runtime import DEFAULT_ONNX_METADATA as DEFAULT_ONNX_METADATA
 from .runtime import DEFAULT_TOP_P as DEFAULT_TOP_P
 from .runtime import MortalRuntime as MortalRuntime
 from .runtime import MortalRuntimeError as MortalRuntimeError
+from .runtime import RuntimeBackend as RuntimeBackend
 from .runtime import load_mortal_runtime as load_mortal_runtime
 
 __all__ = [
@@ -41,9 +44,11 @@ __all__ = [
     "AuthInputError",
     "DEFAULT_BOLTZMANN_EPSILON",
     "DEFAULT_BOLTZMANN_TEMP",
-    "DEFAULT_GRP_MODEL",
+    "DEFAULT_BRAIN_ONNX",
+    "DEFAULT_DQN_ONNX",
     "DEFAULT_MORTAL_MODEL",
     "DEFAULT_MORTAL_VENDOR_DIR",
+    "DEFAULT_ONNX_METADATA",
     "DEFAULT_TOKEN_FILE",
     "DEFAULT_TOP_P",
     "FOUR_PLAYER_CATEGORY",
@@ -53,6 +58,7 @@ __all__ = [
     "MortalReviewResult",
     "MortalRuntime",
     "MortalRuntimeError",
+    "RuntimeBackend",
     "RecentAccountReviewSummary",
     "RecentGame",
     "RecentPaipuError",
