@@ -6,7 +6,13 @@ from dataclasses import dataclass
 import math
 from typing import Any
 
-from .runtime import MortalRuntime, load_mortal_runtime
+from .runtime import (
+    DEFAULT_BOLTZMANN_EPSILON,
+    DEFAULT_BOLTZMANN_TEMP,
+    DEFAULT_TOP_P,
+    MortalRuntime,
+    load_mortal_runtime,
+)
 
 
 MJAI_TILE_LABELS = [
@@ -48,7 +54,9 @@ class MortalReviewResult:
     rating: float
     rating_percent: float
     model_tag: str
-    temperature: float
+    boltzmann_epsilon: float
+    boltzmann_temp: float
+    top_p: float
     phi_matrix: list[list[list[float]]] | None
     entries: list[MortalReviewEntry]
 
@@ -251,7 +259,6 @@ def review_mjai_events(
     *,
     player_id: int,
     runtime: MortalRuntime | None = None,
-    temperature: float = 1.0,
     include_phi_matrix: bool = True,
 ) -> MortalReviewResult:
     if runtime is None:
@@ -325,7 +332,9 @@ def review_mjai_events(
         rating=rating,
         rating_percent=rating * 100.0,
         model_tag=runtime.model_tag,
-        temperature=float(temperature),
+        boltzmann_epsilon=float(getattr(runtime, "boltzmann_epsilon", DEFAULT_BOLTZMANN_EPSILON)),
+        boltzmann_temp=float(getattr(runtime, "boltzmann_temp", DEFAULT_BOLTZMANN_TEMP)),
+        top_p=float(getattr(runtime, "top_p", DEFAULT_TOP_P)),
         phi_matrix=phi_matrix,
         entries=entries,
     )

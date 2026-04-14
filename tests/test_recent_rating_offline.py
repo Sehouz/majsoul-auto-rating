@@ -89,7 +89,9 @@ def fake_reviewer(
         rating=rating,
         rating_percent=rating * 100.0,
         model_tag="fake-mortal",
-        temperature=1.0,
+        boltzmann_epsilon=0.005,
+        boltzmann_temp=0.05,
+        top_p=1.0,
         phi_matrix=None,
         entries=[],
     )

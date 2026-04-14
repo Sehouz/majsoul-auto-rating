@@ -14,9 +14,12 @@ from majsoul import AuthenticationError
 from majsoul_auto_rating import (
     AuthInputError,
     FOUR_PLAYER_CATEGORY,
+    DEFAULT_BOLTZMANN_EPSILON,
+    DEFAULT_BOLTZMANN_TEMP,
     DEFAULT_GRP_MODEL,
     DEFAULT_MORTAL_MODEL,
     DEFAULT_MORTAL_VENDOR_DIR,
+    DEFAULT_TOP_P,
     authenticated_client,
     fetch_and_review_recent_games,
     load_mortal_runtime,
@@ -42,6 +45,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mortal-vendor-dir", default=str(DEFAULT_MORTAL_VENDOR_DIR))
     parser.add_argument("--model", default=str(DEFAULT_MORTAL_MODEL))
     parser.add_argument("--grp-model", default=str(DEFAULT_GRP_MODEL))
+    parser.add_argument("--boltzmann-epsilon", type=float, default=DEFAULT_BOLTZMANN_EPSILON)
+    parser.add_argument("--boltzmann-temp", type=float, default=DEFAULT_BOLTZMANN_TEMP)
+    parser.add_argument("--top-p", type=float, default=DEFAULT_TOP_P)
     return parser
 
 
@@ -53,6 +59,9 @@ async def run_query(args: argparse.Namespace) -> int:
         device=args.device,
         enable_quick_eval=False,
         load_grp=args.with_phi,
+        boltzmann_epsilon=args.boltzmann_epsilon,
+        boltzmann_temp=args.boltzmann_temp,
+        top_p=args.top_p,
     )
 
     async with authenticated_client(

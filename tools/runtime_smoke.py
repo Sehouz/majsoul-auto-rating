@@ -7,9 +7,12 @@ import argparse
 import json
 
 from majsoul_auto_rating import (
+    DEFAULT_BOLTZMANN_EPSILON,
+    DEFAULT_BOLTZMANN_TEMP,
     DEFAULT_GRP_MODEL,
     DEFAULT_MORTAL_MODEL,
     DEFAULT_MORTAL_VENDOR_DIR,
+    DEFAULT_TOP_P,
     load_mortal_runtime,
 )
 
@@ -27,6 +30,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mortal-vendor-dir", default=str(DEFAULT_MORTAL_VENDOR_DIR), help="Path to vendored Mortal runtime assets")
     parser.add_argument("--model", default=str(DEFAULT_MORTAL_MODEL), help="Path to Mortal model state")
     parser.add_argument("--grp-model", default=str(DEFAULT_GRP_MODEL), help="Path to GRP model state")
+    parser.add_argument("--boltzmann-epsilon", type=float, default=DEFAULT_BOLTZMANN_EPSILON, help="Exploration epsilon")
+    parser.add_argument("--boltzmann-temp", type=float, default=DEFAULT_BOLTZMANN_TEMP, help="Boltzmann sampling temperature")
+    parser.add_argument("--top-p", type=float, default=DEFAULT_TOP_P, help="Nucleus sampling cutoff")
     parser.add_argument("--include-none", action="store_true", help="Include non-reactable events as synthetic none reactions")
     return parser
 
@@ -41,6 +47,9 @@ def main() -> int:
         device=args.device,
         enable_quick_eval=False,
         load_grp=args.show_phi,
+        boltzmann_epsilon=args.boltzmann_epsilon,
+        boltzmann_temp=args.boltzmann_temp,
+        top_p=args.top_p,
     )
     summary = runtime.analyze_log(
         events,

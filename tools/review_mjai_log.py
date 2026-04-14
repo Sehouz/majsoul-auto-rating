@@ -7,9 +7,12 @@ import argparse
 import json
 
 from majsoul_auto_rating import (
+    DEFAULT_BOLTZMANN_EPSILON,
+    DEFAULT_BOLTZMANN_TEMP,
     DEFAULT_GRP_MODEL,
     DEFAULT_MORTAL_MODEL,
     DEFAULT_MORTAL_VENDOR_DIR,
+    DEFAULT_TOP_P,
     load_mortal_runtime,
     review_mjai_events,
 )
@@ -28,6 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mortal-vendor-dir", default=str(DEFAULT_MORTAL_VENDOR_DIR))
     parser.add_argument("--model", default=str(DEFAULT_MORTAL_MODEL))
     parser.add_argument("--grp-model", default=str(DEFAULT_GRP_MODEL))
+    parser.add_argument("--boltzmann-epsilon", type=float, default=DEFAULT_BOLTZMANN_EPSILON)
+    parser.add_argument("--boltzmann-temp", type=float, default=DEFAULT_BOLTZMANN_TEMP)
+    parser.add_argument("--top-p", type=float, default=DEFAULT_TOP_P)
     return parser
 
 
@@ -41,6 +47,9 @@ def main() -> int:
         device=args.device,
         enable_quick_eval=False,
         load_grp=args.with_phi,
+        boltzmann_epsilon=args.boltzmann_epsilon,
+        boltzmann_temp=args.boltzmann_temp,
+        top_p=args.top_p,
     )
     result = review_mjai_events(
         events,
@@ -52,6 +61,9 @@ def main() -> int:
     summary = {
         "model_tag": result.model_tag,
         "rating": result.rating,
+        "boltzmann_epsilon": result.boltzmann_epsilon,
+        "boltzmann_temp": result.boltzmann_temp,
+        "top_p": result.top_p,
         "total_reviewed": result.total_reviewed,
         "total_matches": result.total_matches,
         "entry_count": len(result.entries),

@@ -31,6 +31,9 @@ DEFAULT_MORTAL_RUNTIME_DIR = DEFAULT_MORTAL_VENDOR_DIR / "mortal_runtime"
 DEFAULT_LIBRIICHI_SOURCE_DIR = DEFAULT_MORTAL_VENDOR_DIR / "libriichi-src"
 DEFAULT_MORTAL_MODEL = DEFAULT_MORTAL_VENDOR_DIR / "models" / "mortal.pth"
 DEFAULT_GRP_MODEL = DEFAULT_MORTAL_VENDOR_DIR / "models" / "grp.pth"
+DEFAULT_BOLTZMANN_EPSILON = 0.005
+DEFAULT_BOLTZMANN_TEMP = 0.05
+DEFAULT_TOP_P = 1.0
 
 
 class MortalRuntimeError(RuntimeError):
@@ -149,12 +152,18 @@ class MortalRuntime:
         enable_quick_eval: bool = False,
         enable_rule_based_agari_guard: bool = True,
         load_grp: bool = True,
+        boltzmann_epsilon: float = DEFAULT_BOLTZMANN_EPSILON,
+        boltzmann_temp: float = DEFAULT_BOLTZMANN_TEMP,
+        top_p: float = DEFAULT_TOP_P,
     ) -> None:
         self.paths = paths
         self.device_name = device
         self.enable_amp = bool(enable_amp)
         self.enable_quick_eval = bool(enable_quick_eval)
         self.enable_rule_based_agari_guard = bool(enable_rule_based_agari_guard)
+        self.boltzmann_epsilon = float(boltzmann_epsilon)
+        self.boltzmann_temp = float(boltzmann_temp)
+        self.top_p = float(top_p)
 
         if not self.paths.mortal_runtime_dir.exists():
             raise MortalRuntimeError(
@@ -232,6 +241,9 @@ class MortalRuntime:
             enable_quick_eval=self.enable_quick_eval,
             enable_rule_based_agari_guard=self.enable_rule_based_agari_guard,
             name=self.model_tag,
+            boltzmann_epsilon=self.boltzmann_epsilon,
+            boltzmann_temp=self.boltzmann_temp,
+            top_p=self.top_p,
         )
 
         self.grp = None
@@ -313,6 +325,9 @@ def load_mortal_runtime(
     enable_quick_eval: bool = False,
     enable_rule_based_agari_guard: bool = True,
     load_grp: bool = True,
+    boltzmann_epsilon: float = DEFAULT_BOLTZMANN_EPSILON,
+    boltzmann_temp: float = DEFAULT_BOLTZMANN_TEMP,
+    top_p: float = DEFAULT_TOP_P,
 ) -> MortalRuntime:
     vendor_dir = Path(mortal_vendor_dir)
     resolved_model_state_path = Path(model_state_path)
@@ -337,14 +352,20 @@ def load_mortal_runtime(
         enable_quick_eval=enable_quick_eval,
         enable_rule_based_agari_guard=enable_rule_based_agari_guard,
         load_grp=load_grp,
+        boltzmann_epsilon=boltzmann_epsilon,
+        boltzmann_temp=boltzmann_temp,
+        top_p=top_p,
     )
 
 
 __all__ = [
+    "DEFAULT_BOLTZMANN_EPSILON",
+    "DEFAULT_BOLTZMANN_TEMP",
     "DEFAULT_GRP_MODEL",
     "DEFAULT_MORTAL_MODEL",
     "DEFAULT_MORTAL_RUNTIME_DIR",
     "DEFAULT_MORTAL_VENDOR_DIR",
+    "DEFAULT_TOP_P",
     "DEFAULT_LIBRIICHI_SOURCE_DIR",
     "MortalBotSession",
     "MortalLogSummary",

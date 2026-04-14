@@ -1,6 +1,13 @@
 from pathlib import Path
 
-from majsoul_auto_rating.runtime import DEFAULT_GRP_MODEL, DEFAULT_MORTAL_MODEL, MortalPaths
+from majsoul_auto_rating.runtime import (
+    DEFAULT_BOLTZMANN_EPSILON,
+    DEFAULT_BOLTZMANN_TEMP,
+    DEFAULT_GRP_MODEL,
+    DEFAULT_MORTAL_MODEL,
+    DEFAULT_TOP_P,
+    MortalPaths,
+)
 from majsoul_auto_rating.runtime import load_mortal_runtime
 
 
@@ -25,6 +32,10 @@ def test_custom_vendor_dir_rewrites_default_model_paths(monkeypatch) -> None:
     assert paths.libriichi_source_dir == vendor_dir / "libriichi-src"
     assert paths.model_state_path == vendor_dir / "models" / "mortal.pth"
     assert paths.grp_state_path == vendor_dir / "models" / "grp.pth"
+    kwargs = captured["kwargs"]
+    assert kwargs["boltzmann_epsilon"] == DEFAULT_BOLTZMANN_EPSILON
+    assert kwargs["boltzmann_temp"] == DEFAULT_BOLTZMANN_TEMP
+    assert kwargs["top_p"] == DEFAULT_TOP_P
 
 
 def test_explicit_model_paths_are_preserved(monkeypatch) -> None:
@@ -44,6 +55,9 @@ def test_explicit_model_paths_are_preserved(monkeypatch) -> None:
         mortal_vendor_dir=vendor_dir,
         model_state_path=model_path,
         grp_state_path=grp_path,
+        boltzmann_epsilon=0.2,
+        boltzmann_temp=0.7,
+        top_p=0.9,
     )
 
     assert isinstance(runtime, DummyRuntime)
@@ -51,3 +65,7 @@ def test_explicit_model_paths_are_preserved(monkeypatch) -> None:
     assert isinstance(paths, MortalPaths)
     assert paths.model_state_path == model_path
     assert paths.grp_state_path == grp_path
+    kwargs = captured["kwargs"]
+    assert kwargs["boltzmann_epsilon"] == 0.2
+    assert kwargs["boltzmann_temp"] == 0.7
+    assert kwargs["top_p"] == 0.9

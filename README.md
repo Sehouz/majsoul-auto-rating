@@ -120,6 +120,24 @@ Smoke test the embedded runtime with an existing MJAI log:
 uv run python tools/runtime_smoke.py --mjai-log /tmp/game.mjai.jsonl --player-id 0
 ```
 
+By default the embedded runtime now mirrors Mortal's `train_play.default`
+sampling parameters from `config.example.toml`:
+
+- `boltzmann_epsilon = 0.005`
+- `boltzmann_temp = 0.05`
+- `top_p = 1.0`
+
+Override them from the CLI when needed:
+
+```bash
+uv run python tools/runtime_smoke.py \
+  --mjai-log /tmp/game.mjai.jsonl \
+  --player-id 0 \
+  --boltzmann-epsilon 0 \
+  --boltzmann-temp 1 \
+  --top-p 1
+```
+
 Run the lightweight in-process review:
 
 ```bash
