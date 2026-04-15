@@ -810,6 +810,7 @@ dependencies = [
     { name = "aiohttp" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "onnx" },
     { name = "protobuf" },
     { name = "toml" },
     { name = "websockets" },
@@ -847,6 +848,7 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.13,<4" },
     { name = "numpy", specifier = ">=2,<3" },
+    { name = "onnx", specifier = ">=1.21.0" },
     { name = "onnxruntime", marker = "extra == 'onnxruntime'", specifier = ">=1.24.3,<2" },
     { name = "oss2", marker = "extra == 'oss'", specifier = ">=2.19,<3" },
     { name = "playwright", marker = "extra == 'tools'", specifier = ">=1.50,<2" },

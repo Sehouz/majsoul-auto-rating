@@ -13,11 +13,9 @@ import time
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from majsoul_auto_rating import (
-    DEFAULT_BRAIN_ONNX,
-    DEFAULT_DQN_ONNX,
     DEFAULT_MORTAL_MODEL,
+    DEFAULT_MORTAL_ONNX,
     DEFAULT_MORTAL_VENDOR_DIR,
-    DEFAULT_ONNX_METADATA,
     build_reviewer_report,
     load_mortal_runtime,
 )
@@ -34,9 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--backend", choices=["torch", "onnxruntime"], default="torch", help="Inference backend")
     parser.add_argument("--mortal-vendor-dir", default=str(DEFAULT_MORTAL_VENDOR_DIR))
     parser.add_argument("--model", default=str(DEFAULT_MORTAL_MODEL))
-    parser.add_argument("--brain-onnx", default=str(DEFAULT_BRAIN_ONNX))
-    parser.add_argument("--dqn-onnx", default=str(DEFAULT_DQN_ONNX))
-    parser.add_argument("--onnx-metadata", default=str(DEFAULT_ONNX_METADATA))
+    parser.add_argument("--onnx-model", default=str(DEFAULT_MORTAL_ONNX))
     parser.add_argument("--temperature", type=float, default=0.1, help="Display softmax temperature for details.prob")
     parser.add_argument("--show-rating", action="store_true", help="Mirror mjai-reviewer JSON show_rating flag")
     parser.add_argument("--game-length", default="Hanchan", help="Top-level game_length field")
@@ -58,9 +54,7 @@ def main() -> int:
         backend=args.backend,
         mortal_vendor_dir=args.mortal_vendor_dir,
         model_state_path=args.model,
-        brain_onnx_path=args.brain_onnx,
-        dqn_onnx_path=args.dqn_onnx,
-        onnx_metadata_path=args.onnx_metadata,
+        model_onnx_path=args.onnx_model,
         device=args.device,
         enable_quick_eval=False,
     )

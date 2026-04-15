@@ -97,7 +97,7 @@ Vendored assets now include:
 - `libriichi.so`
 - `libriichi` Rust source
 - `mortal.pth`
-- optional `brain.onnx` / `dqn.onnx`
+- optional `mortal.onnx`
 
 Install exactly one backend environment at a time:
 
@@ -123,11 +123,9 @@ uv run python tools/export_mortal_onnx.py
 
 This writes:
 
-- `vendor/models/brain.onnx`
-- `vendor/models/dqn.onnx`
-- `vendor/models/onnx_metadata.json`
+- `vendor/models/mortal.onnx`
 
-alongside the ONNX external data files.
+The ONNX metadata is embedded directly into the model file.
 The project no longer needs to import code from `/Users/sehouz/Mahjang/Mortal`
 at runtime.
 
@@ -180,6 +178,12 @@ uv run python tools/review_mjai_log.py --mjai-log /tmp/game.mjai.jsonl --player-
 Backend selection is available on all runtime tools through `--backend`
 (`torch` or `onnxruntime`).
 
+For ONNX Runtime, the exported artifact is now a single file:
+
+- `mortal.onnx`
+
+with model metadata embedded directly into ONNX `metadata_props`.
+
 ## Publish Reviewer Reports
 
 You can publish a generated reviewer report JSON to Aliyun OSS and receive both
@@ -199,9 +203,7 @@ uv run python tools/publish_review_report.py \
   --player-id 0 \
   --uuid 260414-37ae1c1e-de1f-4413-894d-6b81a036e8b6 \
   --backend onnxruntime \
-  --brain-onnx /opt/models/brain.onnx \
-  --dqn-onnx /opt/models/dqn.onnx \
-  --onnx-metadata /opt/models/onnx_metadata.json \
+  --onnx-model /opt/models/mortal.onnx \
   --oss-endpoint https://oss-cn-hangzhou.aliyuncs.com \
   --oss-bucket rabbitbot-report \
   --oss-access-key-id YOUR_KEY_ID \
@@ -240,7 +242,7 @@ MAJSOUL_PACKAGE_BACKEND=onnxruntime uv build
 The build mode only affects packaged model assets:
 
 - `torch` mode keeps `mortal.pth` and prunes ONNX files
-- `onnxruntime` mode keeps ONNX files plus `onnx_metadata.json` and prunes `mortal.pth`
+- `onnxruntime` mode keeps `mortal.onnx` and prunes `mortal.pth`
 
 Dependency installation is still controlled by the selected optional extra.
 

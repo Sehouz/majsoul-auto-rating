@@ -100,7 +100,7 @@ class build_py(_build_py):
 
     def _prune_models(self, target_models_dir: Path) -> None:
         if PACKAGE_MODE == "torch":
-            for name in ("brain.onnx", "brain.onnx.data", "dqn.onnx", "dqn.onnx.data", "onnx_metadata.json"):
+            for name in ("mortal.onnx"):
                 path = target_models_dir / name
                 if path.exists():
                     path.unlink()

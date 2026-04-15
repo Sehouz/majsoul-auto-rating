@@ -33,9 +33,7 @@ if not DEFAULT_MORTAL_VENDOR_DIR.exists():
 DEFAULT_MORTAL_RUNTIME_DIR = DEFAULT_MORTAL_VENDOR_DIR / "mortal_runtime"
 DEFAULT_LIBRIICHI_SOURCE_DIR = DEFAULT_MORTAL_VENDOR_DIR / "libriichi-src"
 DEFAULT_MORTAL_MODEL = DEFAULT_MORTAL_VENDOR_DIR / "models" / "mortal.pth"
-DEFAULT_BRAIN_ONNX = DEFAULT_MORTAL_VENDOR_DIR / "models" / "brain.onnx"
-DEFAULT_DQN_ONNX = DEFAULT_MORTAL_VENDOR_DIR / "models" / "dqn.onnx"
-DEFAULT_ONNX_METADATA = DEFAULT_MORTAL_VENDOR_DIR / "models" / "onnx_metadata.json"
+DEFAULT_MORTAL_ONNX = DEFAULT_MORTAL_VENDOR_DIR / "models" / "mortal.onnx"
 DEFAULT_BOLTZMANN_EPSILON = 0.005
 DEFAULT_BOLTZMANN_TEMP = 0.05
 DEFAULT_TOP_P = 0.1
@@ -87,15 +85,30 @@ def _libriichi_extension_candidates(runtime_dir: Path) -> list[Path]:
     return [runtime_dir / name for name in dict.fromkeys(names)]
 
 
+def _load_onnx_metadata(path: Path) -> dict[str, Any]:
+    try:
+        import onnx
+    except ModuleNotFoundError as exc:
+        raise MortalRuntimeError(
+            "Missing Python dependency `onnx`. Install the onnxruntime backend dependencies first."
+        ) from exc
+
+    model = onnx.load(path, load_external_data=False)
+    metadata = {entry.key: entry.value for entry in model.metadata_props}
+    required = {"version", "num_blocks", "conv_channels", "model_tag"}
+    missing = sorted(required - metadata.keys())
+    if missing:
+        raise MortalRuntimeError(f"Mortal ONNX model is missing metadata keys: {', '.join(missing)}")
+    return metadata
+
+
 @dataclass(frozen=True)
 class MortalPaths:
     mortal_vendor_dir: Path = DEFAULT_MORTAL_VENDOR_DIR
     mortal_runtime_dir: Path = DEFAULT_MORTAL_RUNTIME_DIR
     libriichi_source_dir: Path = DEFAULT_LIBRIICHI_SOURCE_DIR
     model_state_path: Path = DEFAULT_MORTAL_MODEL
-    brain_onnx_path: Path = DEFAULT_BRAIN_ONNX
-    dqn_onnx_path: Path = DEFAULT_DQN_ONNX
-    onnx_metadata_path: Path = DEFAULT_ONNX_METADATA
+    model_onnx_path: Path = DEFAULT_MORTAL_ONNX
 
 
 @dataclass(frozen=True)
@@ -266,20 +279,12 @@ class MortalRuntime:
         )
 
     def _init_onnx_backend(self) -> None:
-        if not self.paths.brain_onnx_path.exists():
+        if not self.paths.model_onnx_path.exists():
             raise MortalRuntimeError(
-                f"Brain ONNX model does not exist: {self.paths.brain_onnx_path}"
-            )
-        if not self.paths.dqn_onnx_path.exists():
-            raise MortalRuntimeError(
-                f"DQN ONNX model does not exist: {self.paths.dqn_onnx_path}"
-            )
-        if not self.paths.onnx_metadata_path.exists():
-            raise MortalRuntimeError(
-                f"ONNX metadata does not exist: {self.paths.onnx_metadata_path}"
+                f"Mortal ONNX model does not exist: {self.paths.model_onnx_path}"
             )
 
-        metadata = json.loads(self.paths.onnx_metadata_path.read_text(encoding="utf-8"))
+        metadata = _load_onnx_metadata(self.paths.model_onnx_path)
         self.version = int(metadata["version"])
         self.num_blocks = int(metadata["num_blocks"])
         self.conv_channels = int(metadata["conv_channels"])
@@ -292,8 +297,7 @@ class MortalRuntime:
 
         self.engine = OrtMortalEngine(
             paths=OrtEnginePaths(
-                brain_onnx_path=self.paths.brain_onnx_path,
-                dqn_onnx_path=self.paths.dqn_onnx_path,
+                model_onnx_path=self.paths.model_onnx_path,
             ),
             is_oracle=False,
             version=self.version,
@@ -339,9 +343,7 @@ def load_mortal_runtime(
     *,
     backend: RuntimeBackend = "torch",
     model_state_path: Path | str = DEFAULT_MORTAL_MODEL,
-    brain_onnx_path: Path | str = DEFAULT_BRAIN_ONNX,
-    dqn_onnx_path: Path | str = DEFAULT_DQN_ONNX,
-    onnx_metadata_path: Path | str = DEFAULT_ONNX_METADATA,
+    model_onnx_path: Path | str = DEFAULT_MORTAL_ONNX,
     mortal_vendor_dir: Path | str = DEFAULT_MORTAL_VENDOR_DIR,
     device: str = "cpu",
     enable_amp: bool = False,
@@ -353,27 +355,19 @@ def load_mortal_runtime(
 ) -> MortalRuntime:
     vendor_dir = Path(mortal_vendor_dir)
     resolved_model_state_path = Path(model_state_path)
-    resolved_brain_onnx_path = Path(brain_onnx_path)
-    resolved_dqn_onnx_path = Path(dqn_onnx_path)
-    resolved_onnx_metadata_path = Path(onnx_metadata_path)
+    resolved_model_onnx_path = Path(model_onnx_path)
 
     if resolved_model_state_path == DEFAULT_MORTAL_MODEL:
         resolved_model_state_path = vendor_dir / "models" / "mortal.pth"
-    if resolved_brain_onnx_path == DEFAULT_BRAIN_ONNX:
-        resolved_brain_onnx_path = vendor_dir / "models" / "brain.onnx"
-    if resolved_dqn_onnx_path == DEFAULT_DQN_ONNX:
-        resolved_dqn_onnx_path = vendor_dir / "models" / "dqn.onnx"
-    if resolved_onnx_metadata_path == DEFAULT_ONNX_METADATA:
-        resolved_onnx_metadata_path = vendor_dir / "models" / "onnx_metadata.json"
+    if resolved_model_onnx_path == DEFAULT_MORTAL_ONNX:
+        resolved_model_onnx_path = vendor_dir / "models" / "mortal.onnx"
 
     paths = MortalPaths(
         mortal_vendor_dir=vendor_dir,
         mortal_runtime_dir=vendor_dir / "mortal_runtime",
         libriichi_source_dir=vendor_dir / "libriichi-src",
         model_state_path=resolved_model_state_path,
-        brain_onnx_path=resolved_brain_onnx_path,
-        dqn_onnx_path=resolved_dqn_onnx_path,
-        onnx_metadata_path=resolved_onnx_metadata_path,
+        model_onnx_path=resolved_model_onnx_path,
     )
     return MortalRuntime(
         paths=paths,
@@ -391,12 +385,10 @@ def load_mortal_runtime(
 __all__ = [
     "DEFAULT_BOLTZMANN_EPSILON",
     "DEFAULT_BOLTZMANN_TEMP",
-    "DEFAULT_BRAIN_ONNX",
-    "DEFAULT_DQN_ONNX",
     "DEFAULT_MORTAL_MODEL",
+    "DEFAULT_MORTAL_ONNX",
     "DEFAULT_MORTAL_RUNTIME_DIR",
     "DEFAULT_MORTAL_VENDOR_DIR",
-    "DEFAULT_ONNX_METADATA",
     "DEFAULT_TOP_P",
     "DEFAULT_LIBRIICHI_SOURCE_DIR",
     "MortalBotSession",

@@ -16,9 +16,8 @@ from majsoul_auto_rating import (
     FOUR_PLAYER_CATEGORY,
     DEFAULT_BOLTZMANN_EPSILON,
     DEFAULT_BOLTZMANN_TEMP,
-    DEFAULT_BRAIN_ONNX,
-    DEFAULT_DQN_ONNX,
     DEFAULT_MORTAL_MODEL,
+    DEFAULT_MORTAL_ONNX,
     DEFAULT_MORTAL_VENDOR_DIR,
     DEFAULT_TOP_P,
     authenticated_client,
@@ -45,8 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--strict", action="store_true", help="Fail fast when any single paipu review fails")
     parser.add_argument("--mortal-vendor-dir", default=str(DEFAULT_MORTAL_VENDOR_DIR))
     parser.add_argument("--model", default=str(DEFAULT_MORTAL_MODEL))
-    parser.add_argument("--brain-onnx", default=str(DEFAULT_BRAIN_ONNX))
-    parser.add_argument("--dqn-onnx", default=str(DEFAULT_DQN_ONNX))
+    parser.add_argument("--onnx-model", default=str(DEFAULT_MORTAL_ONNX))
     parser.add_argument("--boltzmann-epsilon", type=float, default=DEFAULT_BOLTZMANN_EPSILON)
     parser.add_argument("--boltzmann-temp", type=float, default=DEFAULT_BOLTZMANN_TEMP)
     parser.add_argument("--top-p", type=float, default=DEFAULT_TOP_P)
@@ -58,8 +56,7 @@ async def run_query(args: argparse.Namespace) -> int:
         backend=args.backend,
         mortal_vendor_dir=args.mortal_vendor_dir,
         model_state_path=args.model,
-        brain_onnx_path=args.brain_onnx,
-        dqn_onnx_path=args.dqn_onnx,
+        model_onnx_path=args.onnx_model,
         device=args.device,
         enable_quick_eval=False,
         boltzmann_epsilon=args.boltzmann_epsilon,

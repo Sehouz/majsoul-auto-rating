@@ -9,9 +9,8 @@ import json
 from majsoul_auto_rating import (
     DEFAULT_BOLTZMANN_EPSILON,
     DEFAULT_BOLTZMANN_TEMP,
-    DEFAULT_BRAIN_ONNX,
-    DEFAULT_DQN_ONNX,
     DEFAULT_MORTAL_MODEL,
+    DEFAULT_MORTAL_ONNX,
     DEFAULT_MORTAL_VENDOR_DIR,
     DEFAULT_TOP_P,
     load_mortal_runtime,
@@ -30,8 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--show-events", type=int, default=5, help="Show first N reactions")
     parser.add_argument("--mortal-vendor-dir", default=str(DEFAULT_MORTAL_VENDOR_DIR), help="Path to vendored Mortal runtime assets")
     parser.add_argument("--model", default=str(DEFAULT_MORTAL_MODEL), help="Path to Mortal model state")
-    parser.add_argument("--brain-onnx", default=str(DEFAULT_BRAIN_ONNX), help="Path to Brain ONNX model")
-    parser.add_argument("--dqn-onnx", default=str(DEFAULT_DQN_ONNX), help="Path to DQN ONNX model")
+    parser.add_argument("--onnx-model", default=str(DEFAULT_MORTAL_ONNX), help="Path to single-file Mortal ONNX model")
     parser.add_argument("--boltzmann-epsilon", type=float, default=DEFAULT_BOLTZMANN_EPSILON, help="Exploration epsilon")
     parser.add_argument("--boltzmann-temp", type=float, default=DEFAULT_BOLTZMANN_TEMP, help="Boltzmann sampling temperature")
     parser.add_argument("--top-p", type=float, default=DEFAULT_TOP_P, help="Nucleus sampling cutoff")
@@ -46,8 +44,7 @@ def main() -> int:
         backend=args.backend,
         mortal_vendor_dir=args.mortal_vendor_dir,
         model_state_path=args.model,
-        brain_onnx_path=args.brain_onnx,
-        dqn_onnx_path=args.dqn_onnx,
+        model_onnx_path=args.onnx_model,
         device=args.device,
         enable_quick_eval=False,
         boltzmann_epsilon=args.boltzmann_epsilon,

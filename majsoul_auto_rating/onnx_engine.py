@@ -10,8 +10,7 @@ import onnxruntime as ort
 
 @dataclass(frozen=True)
 class OrtEnginePaths:
-    brain_onnx_path: Path
-    dqn_onnx_path: Path
+    model_onnx_path: Path
 
 
 class OrtMortalEngine:
@@ -42,13 +41,8 @@ class OrtMortalEngine:
         session_opts = ort.SessionOptions()
         session_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         chosen_providers = providers or ["CPUExecutionProvider"]
-        self.brain_session = ort.InferenceSession(
-            str(paths.brain_onnx_path),
-            sess_options=session_opts,
-            providers=chosen_providers,
-        )
-        self.dqn_session = ort.InferenceSession(
-            str(paths.dqn_onnx_path),
+        self.session = ort.InferenceSession(
+            str(paths.model_onnx_path),
             sess_options=session_opts,
             providers=chosen_providers,
         )
@@ -57,8 +51,7 @@ class OrtMortalEngine:
         del invisible_obs
         obs_np = np.stack(obs, axis=0).astype(np.float32, copy=False)
         masks_np = np.stack(masks, axis=0).astype(np.bool_, copy=False)
-        phi = self.brain_session.run(["phi"], {"obs": obs_np})[0]
-        q_out = self.dqn_session.run(["q_values"], {"phi": phi, "mask": masks_np})[0]
+        q_out = self.session.run(["q_values"], {"obs": obs_np, "mask": masks_np})[0]
 
         if self.boltzmann_epsilon > 0:
             is_greedy = np.random.binomial(1, 1 - self.boltzmann_epsilon, size=q_out.shape[0]).astype(bool)
